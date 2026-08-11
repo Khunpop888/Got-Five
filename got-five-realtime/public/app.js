@@ -20,6 +20,8 @@ const FALLBACK_COLORS = [
 ];
 const SAVED_PLAYER_NAME = localStorage.getItem("gotfive.name") || "";
 const SAVED_OWNER_KEY = sessionStorage.getItem("gotfive.ownerKey") || "";
+const START_PARAMS = new URLSearchParams(location.search);
+const START_OWNER_MODE = START_PARAMS.get("owner") === "1" || sessionStorage.getItem("gotfive.ownerMode") === "1" || Boolean(SAVED_OWNER_KEY);
 
 const ui = {
   connected: false,
@@ -29,7 +31,9 @@ const ui = {
   validatingRoom: false,
   state: null,
   name: SAVED_PLAYER_NAME === "Pop" ? "" : SAVED_PLAYER_NAME,
+  ownerMode: START_OWNER_MODE,
   ownerKey: SAVED_OWNER_KEY,
+  createCode: "",
   color: localStorage.getItem("gotfive.color") || "cyan",
   avatar: localStorage.getItem("gotfive.avatar") || "",
   maxPlayers: 4,
@@ -85,7 +89,7 @@ function connect() {
       }
       if (packet.data?.me?.sessionToken && packet.data?.room?.code) {
         setSessionToken(packet.data.room.code, packet.data.me.sessionToken);
-        history.replaceState(null, "", `/room/${packet.data.room.code}`);
+        history.replaceState(null, "", `/room/${encodeURIComponent(packet.data.room.code)}`);
       }
       syncIdentityFromState(packet.data);
       syncPendingAvatar(packet.event, packet.data);
@@ -193,6 +197,7 @@ function renderLoading() {
 
 function renderStart() {
   const palette = ui.state?.playerColors || FALLBACK_COLORS;
+  const showCreator = ui.ownerMode;
   return `
     <section class="start-screen">
       <div class="brand-block">
@@ -200,7 +205,7 @@ function renderStart() {
           <div>
             <span class="brand-kicker">Realtime Multiplayer</span>
             <h1>GOT FIVE!</h1>
-            <p>โต๊ะเกมทดลองสำหรับเล่นผ่าน browser บน PC และมือถือ สร้างห้องแล้วส่งลิงก์ให้เพื่อนเข้ามาได้ทันทีในเครือข่ายเดียวกัน</p>
+            <p>โต๊ะเกมออนไลน์สำหรับเล่นผ่าน browser บน PC และมือถือ เจ้าของสร้างห้องแล้วส่งลิงก์ให้เพื่อนเข้ามาได้ทันที</p>
           </div>
           <div class="visual-strip single">
             <img src="/assets/got-five-product.jpg" alt="Got Five game set">
@@ -210,8 +215,8 @@ function renderStart() {
         <section class="start-panel">
           <div class="form-stack">
             <div>
-              <h2>เข้าโต๊ะเกม</h2>
-              <p class="helper">ตั้งชื่อ เลือกสีประจำตัว แล้วสร้างหรือเข้าห้องจากรหัสเชิญ</p>
+              <h2>${showCreator ? "จัดโต๊ะเกม" : "เข้าโต๊ะเกม"}</h2>
+              <p class="helper">${showCreator ? "ตั้งชื่อ เลือกสี แล้วสร้างห้องเชิญเพื่อนหรือเข้าห้องจากรหัส" : "ตั้งชื่อ เลือกสี แล้วเข้าจากลิงก์เชิญหรือรหัสห้อง"}</p>
             </div>
             <label class="field">
               <span>ชื่อผู้เล่น</span>
@@ -224,34 +229,42 @@ function renderStart() {
                 ${palette.map((color) => renderSwatch(color, ui.color)).join("")}
               </div>
             </div>
-            <div class="owner-lock-note">
-              <strong>สร้างห้องได้เฉพาะเจ้าของเว็บ</strong>
-              <span>เพื่อนที่ได้รับเชิญไม่ต้องใส่ช่องนี้ ให้เข้าจากลิงก์หรือรหัสห้องด้านล่าง</span>
-            </div>
-            <label class="field">
-              <span>รหัสเจ้าของเว็บ</span>
-              <input id="owner-key" class="input" type="password" autocomplete="off" value="${escapeHtml(ui.ownerKey)}" placeholder="ใส่รหัสสำหรับสร้างห้อง">
-            </label>
-            <label class="field">
-              <span>จำนวนผู้เล่นสูงสุด</span>
-              <select id="max-players" class="select">
-                ${[2, 3, 4].map((count) => `<option value="${count}" ${ui.maxPlayers === count ? "selected" : ""}>${count} คน</option>`).join("")}
-              </select>
-            </label>
-            <label class="field">
-              <span>จำนวนเกมแข่งขัน</span>
-              <select id="match-total" class="select">
-                ${[1, 2, 3, 4, 5].map((count) => `<option value="${count}" ${ui.matchTotal === count ? "selected" : ""}>${count} เกม</option>`).join("")}
-              </select>
-            </label>
-            <div class="button-row start-actions">
-              <button id="create-room" class="btn primary">สร้างห้องเชิญเพื่อน</button>
-              <a class="btn ghost" href="/how-to-play.html" target="_blank" rel="noopener">วิธีเล่น</a>
-            </div>
+            ${showCreator ? `
+              <div class="creator-panel">
+                <label class="field">
+                  <span>รหัสใช้งาน</span>
+                  <input id="owner-key" class="input" type="password" autocomplete="off" value="${escapeHtml(ui.ownerKey)}" placeholder="ใส่รหัสสำหรับเปิดโต๊ะ">
+                </label>
+                <label class="field">
+                  <span>ตั้งรหัสห้อง</span>
+                  <input id="create-code" class="input" maxlength="24" value="${escapeHtml(ui.createCode)}" placeholder="เช่น ไส้ตัน หรือ enjoy">
+                </label>
+                <label class="field">
+                  <span>จำนวนผู้เล่นสูงสุด</span>
+                  <select id="max-players" class="select">
+                    ${[2, 3, 4].map((count) => `<option value="${count}" ${ui.maxPlayers === count ? "selected" : ""}>${count} คน</option>`).join("")}
+                  </select>
+                </label>
+                <label class="field">
+                  <span>จำนวนเกมแข่งขัน</span>
+                  <select id="match-total" class="select">
+                    ${[1, 2, 3, 4, 5].map((count) => `<option value="${count}" ${ui.matchTotal === count ? "selected" : ""}>${count} เกม</option>`).join("")}
+                  </select>
+                </label>
+                <div class="button-row start-actions">
+                  <button id="create-room" class="btn primary">สร้างห้องเชิญเพื่อน</button>
+                  <a class="btn ghost" href="/how-to-play.html" target="_blank" rel="noopener">วิธีเล่น</a>
+                </div>
+              </div>
+            ` : `
+              <div class="button-row start-actions">
+                <a class="btn ghost" href="/how-to-play.html" target="_blank" rel="noopener">วิธีเล่น</a>
+              </div>
+            `}
             <div class="field">
               <span class="field-label">รหัสห้อง</span>
               <div class="button-row">
-                <input id="join-code" class="input" maxlength="8" value="${escapeHtml(ui.joinCode)}" placeholder="เช่น ABC23">
+                <input id="join-code" class="input" maxlength="24" value="${escapeHtml(ui.joinCode)}" placeholder="เช่น ไส้ตัน หรือ enjoy">
                 <button id="join-room" class="btn violet">เข้าห้อง</button>
               </div>
             </div>
@@ -1180,7 +1193,10 @@ function bindStart() {
     localStorage.setItem("gotfive.name", ui.name);
   });
   bind("#join-code", "input", (event) => {
-    ui.joinCode = event.target.value.toUpperCase();
+    ui.joinCode = event.target.value;
+  });
+  bind("#create-code", "input", (event) => {
+    ui.createCode = event.target.value;
   });
   bind("#max-players", "change", (event) => {
     ui.maxPlayers = Number(event.target.value);
@@ -1192,6 +1208,7 @@ function bindStart() {
   bind("#owner-key", "input", (event) => {
     ui.ownerKey = event.target.value.trim();
     sessionStorage.setItem("gotfive.ownerKey", ui.ownerKey);
+    sessionStorage.setItem("gotfive.ownerMode", "1");
   });
   bindAll(".swatch", "click", (event) => {
     ui.color = event.currentTarget.dataset.color;
@@ -1201,9 +1218,11 @@ function bindStart() {
   bind("#create-room", "click", () => {
     if (!saveIdentityFromStart()) return;
     ui.ownerKey = (document.querySelector("#owner-key")?.value || ui.ownerKey).trim();
+    ui.createCode = (document.querySelector("#create-code")?.value || ui.createCode).trim();
     sessionStorage.setItem("gotfive.ownerKey", ui.ownerKey);
+    sessionStorage.setItem("gotfive.ownerMode", "1");
     ui.pendingAvatarSync = Boolean(ui.avatar);
-    send("createRoom", { name: ui.name, color: ui.color, maxPlayers: ui.maxPlayers, matchTotal: ui.matchTotal, ownerKey: ui.ownerKey });
+    send("createRoom", { name: ui.name, color: ui.color, maxPlayers: ui.maxPlayers, matchTotal: ui.matchTotal, ownerKey: ui.ownerKey, roomCode: ui.createCode });
   });
   bind("#join-room", "click", () => {
     if (!saveIdentityFromStart()) return;
@@ -1475,13 +1494,18 @@ function getRoundInfo(state) {
 }
 
 function roomCodeFromPath() {
-  const match = location.pathname.match(/\/room\/([A-Za-z0-9]+)/);
-  return match ? match[1].toUpperCase() : "";
+  const match = location.pathname.match(/\/room\/([^/?#]+)/);
+  if (!match) return "";
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
 }
 
 function inviteLink() {
   const code = ui.state?.room?.code || ui.joinCode;
-  return `${location.origin}/room/${code}`;
+  return `${location.origin}/room/${encodeURIComponent(code)}`;
 }
 
 async function copyInvite() {
@@ -1494,15 +1518,19 @@ async function copyInvite() {
 }
 
 function getSessionToken(code) {
-  return localStorage.getItem(`gotfive.session.${String(code || "").toUpperCase()}`) || "";
+  return localStorage.getItem(`gotfive.session.${roomStorageKey(code)}`) || "";
 }
 
 function setSessionToken(code, token) {
-  localStorage.setItem(`gotfive.session.${String(code).toUpperCase()}`, token);
+  localStorage.setItem(`gotfive.session.${roomStorageKey(code)}`, token);
 }
 
 function clearSessionToken(code) {
-  localStorage.removeItem(`gotfive.session.${String(code || "").toUpperCase()}`);
+  localStorage.removeItem(`gotfive.session.${roomStorageKey(code)}`);
+}
+
+function roomStorageKey(code) {
+  return encodeURIComponent(String(code || "").trim().normalize("NFKC").toLowerCase());
 }
 
 function notesKey() {

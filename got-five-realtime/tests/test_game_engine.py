@@ -201,6 +201,47 @@ class GameEngineTests(unittest.TestCase):
 
             server.require_owner_key({"ownerKey": "secret-owner-code"})
 
+    def test_custom_room_code_accepts_thai_and_blocks_unsafe_paths(self):
+        self.assertEqual(server.sanitize_room_code("ไส้ตัน"), "ไส้ตัน")
+        self.assertEqual(server.sanitize_room_code(" enjoy "), "enjoy")
+        self.assertEqual(server.room_lookup_key("Enjoy"), server.room_lookup_key("enjoy"))
+
+        for value in ["bad room", "bad/room", "bad?room", "bad#room"]:
+            with self.assertRaises(server.GameError):
+                server.sanitize_room_code(value)
+
+    def test_create_room_can_use_custom_room_code_case_insensitive(self):
+        class FakeClient:
+            def __init__(self):
+                self.room_code = None
+                self.player_id = None
+                self.sent = []
+
+            def send(self, event, data):
+                self.sent.append((event, data))
+
+        with patch.object(server, "OWNER_KEY", "secret-owner-code"):
+            with server.ROOMS_LOCK:
+                server.ROOMS.clear()
+                first = FakeClient()
+                server.handle_create_room(first, {
+                    "ownerKey": "secret-owner-code",
+                    "roomCode": "enjoy",
+                    "name": "Host",
+                    "color": "cyan",
+                })
+                self.assertIn(server.room_lookup_key("ENJOY"), server.ROOMS)
+                self.assertEqual(first.sent[-1][1]["room"]["code"], "enjoy")
+
+                with self.assertRaises(server.GameError):
+                    server.handle_create_room(FakeClient(), {
+                        "ownerKey": "secret-owner-code",
+                        "roomCode": "ENJOY",
+                        "name": "Other",
+                        "color": "blue",
+                    })
+                server.ROOMS.clear()
+
     def test_avatar_sanitizer_accepts_small_safe_images_only(self):
         raw = base64.b64encode(b"small-avatar").decode("ascii")
         self.assertEqual(server.sanitize_avatar(f"data:image/png;base64,{raw}"), f"data:image/png;base64,{raw}")

@@ -203,6 +203,20 @@ button {
   gap: 14px;
 }
 
+.creator-panel {
+  display: grid;
+  gap: 12px;
+  padding: 13px;
+  border: 1px solid rgba(34, 211, 238, 0.32);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(236, 253, 255, 0.88), rgba(255, 247, 214, 0.78)),
+    rgba(255, 255, 255, 0.76);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 0 22px rgba(34, 211, 238, 0.12);
+}
+
 .owner-lock-note {
   display: grid;
   gap: 3px;

@@ -12,6 +12,7 @@ import struct
 import threading
 import time
 import traceback
+import unicodedata
 import urllib.parse
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -27,6 +28,7 @@ OWNER_KEY = os.environ.get("GOT_FIVE_OWNER_KEY", "").strip()
 WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 MAX_AVATAR_BYTES = 256 * 1024
 MAX_WS_MESSAGE_BYTES = 1024 * 1024
+MAX_ROOM_CODE_LEN = 24
 
 ROOMS: dict[str, "Room"] = {}
 ROOMS_LOCK = threading.RLock()
@@ -220,6 +222,30 @@ def sanitize_match_total(value: Any) -> int:
     return min(5, max(1, safe_int(value, 1)))
 
 
+def sanitize_room_code(value: Any, allow_empty: bool = False) -> str:
+    if not isinstance(value, str):
+        if allow_empty:
+            return ""
+        raise GameError("กรอกรหัสห้องก่อน")
+    cleaned = value.replace("\x00", "").strip()
+    if not cleaned:
+        if allow_empty:
+            return ""
+        raise GameError("กรอกรหัสห้องก่อน")
+    if len(cleaned) > MAX_ROOM_CODE_LEN:
+        raise GameError(f"รหัสห้องยาวเกินไป ใช้ได้ไม่เกิน {MAX_ROOM_CODE_LEN} ตัวอักษร")
+    for char in cleaned:
+        category = unicodedata.category(char)
+        allowed = category[0] in {"L", "N", "M"} or char in {"-", "_"}
+        if not allowed:
+            raise GameError("รหัสห้องใช้ได้เฉพาะตัวอักษร ตัวเลข ภาษาไทย ขีดกลาง หรือขีดล่าง")
+    return cleaned
+
+
+def room_lookup_key(code: str) -> str:
+    return unicodedata.normalize("NFKC", code).casefold()
+
+
 def require_owner_key(data: dict[str, Any]) -> None:
     if not OWNER_KEY:
         if not os.environ.get("PORT"):
@@ -234,7 +260,7 @@ def make_room_code() -> str:
     alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     while True:
         code = "".join(secrets.choice(alphabet) for _ in range(5))
-        if code not in ROOMS:
+        if room_lookup_key(code) not in ROOMS:
             return code
 
 
@@ -1203,7 +1229,11 @@ def handle_create_room(client: Client, data: dict[str, Any]) -> None:
     max_players = min(4, max(2, max_players))
     match_total = sanitize_match_total(data.get("matchTotal"))
     with ROOMS_LOCK:
-        code = make_room_code()
+        requested_code = sanitize_room_code(data.get("roomCode", ""), allow_empty=True)
+        code = requested_code or make_room_code()
+        lookup_key = room_lookup_key(code)
+        if lookup_key in ROOMS:
+            raise GameError("รหัสห้องนี้ถูกใช้แล้ว ลองตั้งชื่ออื่น")
         player = create_player(
             sanitize_name(data.get("name", "Host")),
             valid_color(data.get("color", "cyan")),
@@ -1212,8 +1242,8 @@ def handle_create_room(client: Client, data: dict[str, Any]) -> None:
         )
         room = Room(code=code, max_players=max_players, host_id=player.id, players=[player], match_total=match_total)
         room.clients.add(client)
-        ROOMS[code] = room
-        client.room_code = code
+        ROOMS[lookup_key] = room
+        client.room_code = lookup_key
         client.player_id = player.id
         add_log(room, "system", None, f"{player.name} สร้างห้อง {code}")
         client.send("roomJoined", serialize_room(room, player.id))
@@ -1232,11 +1262,10 @@ def handle_update_settings(client: Client, data: dict[str, Any]) -> None:
 
 
 def handle_join_room(client: Client, data: dict[str, Any]) -> None:
-    code = str(data.get("code", "")).strip().upper()
-    if not code:
-        raise GameError("กรอกรหัสห้องก่อน")
+    code = sanitize_room_code(data.get("code", ""))
+    lookup_key = room_lookup_key(code)
     with ROOMS_LOCK:
-        room = ROOMS.get(code)
+        room = ROOMS.get(lookup_key)
         if not room:
             raise GameError("ไม่พบห้องนี้")
         leave_current_room(client)
@@ -1267,7 +1296,7 @@ def handle_join_room(client: Client, data: dict[str, Any]) -> None:
             add_log(room, "system", None, f"{player.name} เข้าห้อง")
 
         room.clients.add(client)
-        client.room_code = code
+        client.room_code = lookup_key
         client.player_id = player.id
         room.revision += 1
         client.send("roomJoined", serialize_room(room, player.id))
