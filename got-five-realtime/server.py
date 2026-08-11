@@ -92,6 +92,7 @@ class Room:
     center: list[Tile] = field(default_factory=list)
     turn_index: int = 0
     turn_count: int = 0
+    turn_started_at: float | None = None
     starter_id: str | None = None
     revision: int = 0
     created_at: float = field(default_factory=time.time)
@@ -152,6 +153,9 @@ def default_stats() -> dict[str, Any]:
         "lastGuess": [],
         "lastAccuracyPct": None,
         "boardMarks": 0,
+        "turnTimeTotalSec": 0,
+        "slowestTurnSec": 0,
+        "lastTurnSec": 0,
         "eliminatedAtTurn": None,
         "wonAtTurn": None,
     }
@@ -383,6 +387,7 @@ def start_room_game(room: Room, starter_index: int | None = None) -> None:
     room.turn_index = starter_index if starter_index is not None else secrets.randbelow(len(room.players))
     room.turn_index %= len(room.players)
     room.started_at = time.time()
+    room.turn_started_at = room.started_at
     room.ended_at = None
     room.status = "playing"
     room.phase = "draw"
@@ -416,6 +421,7 @@ def restart_room_to_lobby(room: Room) -> None:
     room.center = []
     room.turn_index = 0
     room.turn_count = 0
+    room.turn_started_at = None
     room.starter_id = None
     room.started_at = None
     room.ended_at = None
@@ -667,11 +673,22 @@ def apply_guess(room: Room, player: Player, guess: Any) -> dict[str, Any]:
     }
 
 
+def record_turn_time(room: Room, player: Player) -> int:
+    if not room.turn_started_at:
+        return 0
+    elapsed = max(0, int(time.time() - room.turn_started_at))
+    player.stats["lastTurnSec"] = elapsed
+    player.stats["turnTimeTotalSec"] = safe_int(player.stats.get("turnTimeTotalSec"), 0) + elapsed
+    player.stats["slowestTurnSec"] = max(safe_int(player.stats.get("slowestTurnSec"), 0), elapsed)
+    return elapsed
+
+
 def end_turn(room: Room, count_turn: bool = True) -> None:
     if room.status != "playing":
         return
     current = current_player(room)
     if current and count_turn:
+        record_turn_time(room, current)
         current.stats["turns"] += 1
         room.turn_count += 1
 
@@ -683,6 +700,7 @@ def end_turn(room: Room, count_turn: bool = True) -> None:
         candidate = room.players[room.turn_index]
         if candidate.active:
             room.phase = "draw"
+            room.turn_started_at = time.time()
             room.revision += 1
             if not any(room.decks) and not room.center:
                 finish_room(room, winner_id=None, reason="no_tiles")
@@ -796,6 +814,8 @@ def public_stats(player: Player) -> dict[str, Any]:
     stats = dict(player.stats)
     attempts = stats["gotFiveAttempts"]
     stats["avgAccuracyPct"] = round(stats["exactMatchesTotal"] / (attempts * 5) * 100) if attempts else None
+    turns = safe_int(stats.get("turns"), 0)
+    stats["avgTurnSec"] = round(safe_int(stats.get("turnTimeTotalSec"), 0) / turns) if turns else None
     return stats
 
 
@@ -811,6 +831,8 @@ SERIES_STAT_FIELDS = [
     "bestExactMatches",
     "exactMatchesTotal",
     "boardMarks",
+    "turnTimeTotalSec",
+    "slowestTurnSec",
 ]
 
 
@@ -865,7 +887,10 @@ def apply_match_to_series(room: Room) -> None:
         elif rank_num == 4:
             entry["medals"]["fourth"] += 1
         for field in SERIES_STAT_FIELDS:
-            entry["stats"][field] = entry["stats"].get(field, 0) + safe_int(player.stats.get(field), 0)
+            if field == "slowestTurnSec":
+                entry["stats"][field] = max(entry["stats"].get(field, 0), safe_int(player.stats.get(field), 0))
+            else:
+                entry["stats"][field] = entry["stats"].get(field, 0) + safe_int(player.stats.get(field), 0)
 
 
 def series_standings(room: Room) -> list[dict[str, Any]]:
@@ -1104,6 +1129,7 @@ def serialize_room(room: Room, viewer_player_id: str | None) -> dict[str, Any]:
             "createdAt": int(room.created_at * 1000),
             "startedAt": int(room.started_at * 1000) if room.started_at else None,
             "endedAt": int(room.ended_at * 1000) if room.ended_at else None,
+            "turnStartedAt": int(room.turn_started_at * 1000) if room.turn_started_at else None,
             "starterId": room.starter_id,
             "matchIndex": room.match_index,
             "matchTotal": room.match_total,

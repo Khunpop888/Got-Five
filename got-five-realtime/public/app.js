@@ -234,7 +234,10 @@ function renderStart() {
                 ${[1, 2, 3, 4, 5].map((count) => `<option value="${count}" ${ui.matchTotal === count ? "selected" : ""}>${count} เกม</option>`).join("")}
               </select>
             </label>
-            <button id="create-room" class="btn primary">สร้างห้องใหม่</button>
+            <div class="button-row start-actions">
+              <button id="create-room" class="btn primary">สร้างห้องใหม่</button>
+              <a class="btn ghost" href="/how-to-play.html" target="_blank" rel="noopener">วิธีเล่น</a>
+            </div>
             <div class="field">
               <span class="field-label">รหัสห้อง</span>
               <div class="button-row">
@@ -275,6 +278,7 @@ function renderLobby() {
             <div class="button-row">
               <span class="status-pill">รหัส ${escapeHtml(s.room.code)}</span>
               <button id="copy-invite" class="btn ghost">Copy Invite</button>
+              <a class="btn ghost" href="/how-to-play.html" target="_blank" rel="noopener">วิธีเล่น</a>
             </div>
             <input class="input" value="${escapeHtml(invite)}" readonly>
 
@@ -336,12 +340,13 @@ function renderGame() {
 
   return `
     <section class="game-screen">
-      <header class="topbar">
+      <header class="topbar ${isMyTurn ? "is-my-turn" : ""}">
         <div>
           <h1>GOT FIVE!</h1>
           <div class="topbar-meta">
             <span class="small-pill dark">Room ${escapeHtml(s.room.code)}</span>
             <span class="small-pill dark">${escapeHtml(statusText)}</span>
+            ${s.room.status === "playing" ? `<span class="small-pill dark turn-time-pill">ตานี้ <b data-turn-clock-start="${s.room.turnStartedAt || ""}">00:00</b></span>` : ""}
             <span class="small-pill dark">เกมที่ ${series.current}/${series.total}</span>
             <span class="small-pill dark" data-clock-start="${s.room.startedAt || ""}" data-clock-end="${s.room.endedAt || ""}">00:00</span>
             <span class="small-pill dark">รอบที่ ${round.current} · คนที่ ${round.position}/${round.total}</span>
@@ -350,11 +355,14 @@ function renderGame() {
         </div>
         <div class="button-row topbar-actions">
           <button id="copy-invite" class="btn ghost">Copy Invite</button>
+          <a class="btn ghost" href="/how-to-play.html" target="_blank" rel="noopener">วิธีเล่น</a>
           ${s.room.status === "playing" && me?.active ? `<button id="open-guess" class="btn rose">GOT FIVE!</button>` : ""}
           ${me?.isHost && s.room.status === "between_matches" ? `<button id="next-match" class="btn primary">เริ่มเกมถัดไป</button>` : ""}
           ${me?.isHost ? `<button id="restart-room" class="btn ghost">${s.room.status === "finished" || s.room.status === "between_matches" ? "กลับ Lobby" : "Reset"}</button>` : ""}
         </div>
       </header>
+
+      ${s.room.status === "playing" ? renderTurnSpotlight(current, isMyTurn, round) : ""}
 
       <div class="main-grid">
         <div class="table-zone">
@@ -362,7 +370,7 @@ function renderGame() {
             ${opponents.length ? opponents.map((player) => renderSeat(player, false)).join("") : `<div class="empty-state">ยังไม่มีคู่แข่ง</div>`}
           </div>
 
-          <section class="tool-panel">
+          <section class="tool-panel ${isMyTurn ? "is-my-turn-panel" : ""}">
             <div class="tool-head">
               <h2>โต๊ะกลาง</h2>
               <span class="status-pill">${escapeHtml(statusText)}</span>
@@ -376,7 +384,7 @@ function renderGame() {
             </div>
           </section>
 
-          <section class="tool-panel">
+          <section class="tool-panel ${canDraw ? "is-active-step" : ""}">
             <div class="tool-head">
               <h2>Step 1: จั่วไทล์</h2>
               <span class="status-pill">กองที่เหลือ</span>
@@ -391,7 +399,7 @@ function renderGame() {
             </div>
           </section>
 
-          <section class="tool-panel">
+          <section class="tool-panel ${canAction ? "is-active-step" : ""}">
             <div class="tool-head">
               <h2>Step 2: ขอคำใบ้</h2>
               <span class="status-pill">${canAction ? "เลือกไทล์กลาง" : "รอหลังจั่ว"}</span>
@@ -407,7 +415,7 @@ function renderGame() {
             ${renderActionControls(canAction)}
           </section>
 
-          <section class="tool-panel">
+          <section class="tool-panel own-rack-panel ${isMyTurn ? "is-my-turn-panel" : ""}">
             <div class="tool-head">
               <h2>แท่นวางของคุณ</h2>
               <span class="status-pill">${me?.active ? "กำลังเล่น" : "ผู้ชม"}</span>
@@ -426,6 +434,34 @@ function renderGame() {
       ${ui.showGuess ? renderGuessModal() : ""}
       ${ui.guessResult ? renderGuessResult() : ""}
       ${s.room.status !== "playing" && s.room.status !== "lobby" && !ui.guessResult ? renderPostMatch() : ""}
+    </section>
+  `;
+}
+
+function renderTurnSpotlight(player, isMyTurn, round) {
+  if (!player) return "";
+  const stats = player.stats || {};
+  const avg = stats.avgTurnSec == null ? "-" : formatDuration(stats.avgTurnSec);
+  const slowest = stats.slowestTurnSec ? formatDuration(stats.slowestTurnSec) : "-";
+  return `
+    <section class="turn-spotlight ${isMyTurn ? "is-mine" : ""}" data-player-color="${escapeHtml(player.color)}">
+      <div class="turn-person">
+        ${avatarHtml(player, "turn-avatar")}
+        <div>
+          <span class="turn-kicker">${isMyTurn ? "ถึงตาคุณแล้ว!" : "กำลังเล่นตอนนี้"}</span>
+          <strong>${escapeHtml(player.name)}</strong>
+          <small>${phaseName(ui.state.room.phase)} · รอบที่ ${round.current} · คนที่ ${round.position}/${round.total}</small>
+        </div>
+      </div>
+      <div class="turn-meter">
+        <span>เวลาตานี้</span>
+        <b data-turn-clock-start="${ui.state.room.turnStartedAt || ""}">00:00</b>
+      </div>
+      <div class="turn-speed">
+        <span>เฉลี่ย ${avg}</span>
+        <span>ช้าที่สุด ${slowest}</span>
+        <span>${stats.turns || 0} ตาเล่น</span>
+      </div>
     </section>
   `;
 }
@@ -469,6 +505,7 @@ function renderSeat(player, isMine) {
           <div class="seat-meta">
             ${player.isHost ? `<span class="small-pill">Host</span>` : ""}
             <span class="small-pill">${player.kind === "bot" ? "Bot" : status}</span>
+            ${isTurn ? `<span class="small-pill turn-seat-pill">กำลังเล่น <b data-turn-clock-start="${ui.state.room.turnStartedAt || ""}">00:00</b></span>` : ""}
           </div>
         </div>
         <span class="player-dot player-accent"></span>
@@ -496,6 +533,10 @@ function renderRack(player, isMine) {
   }
   return `
     <div class="rack-rail ${isMine ? "rack-rail-mine" : "rack-rail-opponent"}">
+      ${isMine ? `
+        <div class="rack-scale rack-scale-low">&lt;- น้อย</div>
+        <div class="rack-scale rack-scale-high">มาก -&gt;</div>
+      ` : ""}
       <div class="rack-track ${isMine ? "mine" : "opponent"}">
         ${parts.join("")}
       </div>
@@ -1002,6 +1043,8 @@ function renderPlayerStatCard(player) {
         <span>Compare ${compareTotal} (ใช่ ${st.compareYes || 0} / ไม่ใช่ ${st.compareNo || 0})</span>
         <span>ให้คำใบ้ ${st.cluesGiven || 0}</span>
         <span>ขีดบอร์ด ${st.boardMarks || 0}</span>
+        <span>เฉลี่ย/ตา ${st.avgTurnSec == null ? "-" : formatDuration(st.avgTurnSec)}</span>
+        <span>ช้าที่สุด ${st.slowestTurnSec ? formatDuration(st.slowestTurnSec) : "-"}</span>
         <span>ทาย ${attempts} ครั้ง · ${accuracy}</span>
       </div>
     </article>
@@ -1527,6 +1570,17 @@ function updateClocks() {
     }
     const elapsed = Math.floor(((end || Date.now()) - start) / 1000);
     node.textContent = formatDuration(elapsed);
+  });
+  document.querySelectorAll("[data-turn-clock-start]").forEach((node) => {
+    const start = Number(node.dataset.turnClockStart || 0);
+    if (!start) {
+      node.textContent = "00:00";
+      return;
+    }
+    const elapsed = Math.floor((Date.now() - start) / 1000);
+    node.textContent = formatDuration(elapsed);
+    node.classList.toggle("is-slow", elapsed >= 45);
+    node.classList.toggle("is-very-slow", elapsed >= 90);
   });
 }
 
