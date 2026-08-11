@@ -25,6 +25,7 @@ HOST = os.environ.get("GOT_FIVE_HOST") or ("0.0.0.0" if os.environ.get("PORT") e
 PORT = int(os.environ.get("GOT_FIVE_PORT") or os.environ.get("PORT") or "8787")
 WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 MAX_AVATAR_BYTES = 256 * 1024
+MAX_WS_MESSAGE_BYTES = 1024 * 1024
 
 ROOMS: dict[str, "Room"] = {}
 ROOMS_LOCK = threading.RLock()
@@ -99,6 +100,10 @@ class Room:
     log: list[dict[str, Any]] = field(default_factory=list)
     chat: list[dict[str, Any]] = field(default_factory=list)
     rankings: list[dict[str, Any]] = field(default_factory=list)
+    match_total: int = 1
+    match_index: int = 1
+    match_history: list[dict[str, Any]] = field(default_factory=list)
+    series_scores: dict[str, dict[str, Any]] = field(default_factory=dict)
     clients: set["Client"] = field(default_factory=set)
     bot_timers: list[threading.Timer] = field(default_factory=list)
 
@@ -199,6 +204,17 @@ def valid_color(value: Any) -> str:
     return value if isinstance(value, str) and value in keys else PLAYER_COLORS[0]["key"]
 
 
+def safe_int(value: Any, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def sanitize_match_total(value: Any) -> int:
+    return min(5, max(1, safe_int(value, 1)))
+
+
 def make_room_code() -> str:
     alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     while True:
@@ -249,6 +265,7 @@ def ranking_entry(player: Player, rank: int, status: str) -> dict[str, Any]:
         "rank": rank,
         "playerId": player.id,
         "name": player.name,
+        "color": player.color,
         "avatar": player.avatar,
         "status": status,
         "score": max(player.stats["bestExactMatches"], 0),
@@ -342,12 +359,20 @@ def reset_player_for_match(player: Player) -> None:
 
 
 def start_room_game(room: Room, starter_index: int | None = None) -> None:
-    if room.status != "lobby":
+    if room.status not in {"lobby", "between_matches"}:
         raise GameError("เกมเริ่มไปแล้ว")
     if len(room.players) < 2:
         raise GameError("ต้องมีผู้เล่นอย่างน้อย 2 คน")
     if len(room.players) > room.max_players:
         raise GameError("จำนวนผู้เล่นเกินจำนวนสูงสุดของห้อง")
+    if room.status == "lobby":
+        room.match_index = 1
+        room.match_history = []
+        room.series_scores = {}
+    else:
+        if room.match_index >= room.match_total:
+            raise GameError("เล่นครบจำนวนเกมแล้ว")
+        room.match_index += 1
 
     room.decks = build_master_decks()
     room.center = []
@@ -378,7 +403,7 @@ def start_room_game(room: Room, starter_index: int | None = None) -> None:
         room,
         "system",
         None,
-        f"เริ่มเกม แจกไทล์ลับ เปิดไทล์กลางครบ 5 สี และสุ่มให้ {starter.name if starter else 'ผู้เล่น'} เริ่มก่อน",
+        f"เริ่มเกมที่ {room.match_index}/{room.match_total} แจกไทล์ลับ เปิดไทล์กลางครบ 5 สี และสุ่มให้ {starter.name if starter else 'ผู้เล่น'} เริ่มก่อน",
         {"starterId": starter.id if starter else None},
     )
 
@@ -395,6 +420,9 @@ def restart_room_to_lobby(room: Room) -> None:
     room.started_at = None
     room.ended_at = None
     room.rankings = []
+    room.match_index = 1
+    room.match_history = []
+    room.series_scores = {}
     room.log = []
     for player in room.players:
         reset_player_for_match(player)
@@ -674,7 +702,7 @@ def score_for_ranking(player: Player) -> tuple[int, int, int, int]:
 
 
 def finish_room(room: Room, winner_id: str | None, reason: str) -> None:
-    if room.status == "finished":
+    if room.status != "playing":
         return
     if winner_id:
         winner = get_player(room, winner_id)
@@ -682,8 +710,6 @@ def finish_room(room: Room, winner_id: str | None, reason: str) -> None:
             winner.active = False
             add_ranking(room, winner, "finished")
     saved_rankings = list(room.rankings)
-    room.status = "finished"
-    room.phase = "finished"
     room.ended_at = time.time()
     cancel_bot_timers(room)
 
@@ -702,15 +728,25 @@ def finish_room(room: Room, winner_id: str | None, reason: str) -> None:
             "rank": index + 1,
             "playerId": player.id,
             "name": player.name,
+            "color": player.color,
             "avatar": player.avatar,
             "status": "winner" if index == 0 and winner_id == player.id else ("eliminated" if player.eliminated else "unfinished"),
             "score": max(player.stats["bestExactMatches"], 0),
         }
         for index, player in enumerate(ordered)
     ]
-    add_log(room, "system", None, f"จบเกม ({reason})")
     room.rankings = saved_rankings
     room.rankings = final_rankings(room)
+    is_final_match = room.match_index >= room.match_total
+    room.status = "finished" if is_final_match else "between_matches"
+    room.phase = "finished" if is_final_match else "between"
+    apply_match_to_series(room)
+    if is_final_match:
+        add_log(room, "system", None, f"จบซีรีส์ครบ {room.match_total} เกม ({reason})")
+    else:
+        add_log(room, "system", None, f"จบเกมที่ {room.match_index}/{room.match_total} ({reason}) รอเริ่มเกมถัดไป")
+    room.match_history.append(summarize_match(room))
+    room.match_history = room.match_history[-5:]
     room.revision += 1
 
 
@@ -721,8 +757,9 @@ def cancel_bot_timers(room: Room) -> None:
 
 
 def serialize_player(room: Room, player: Player, viewer: Player | None) -> dict[str, Any]:
-    viewer_is_spectator = bool(viewer and (not viewer.active or room.status == "finished"))
-    reveal_tiles = room.status == "finished" or viewer_is_spectator or not viewer or viewer.id != player.id
+    reveal_phase = room.status in {"finished", "between_matches"}
+    viewer_is_spectator = bool(viewer and (not viewer.active or reveal_phase))
+    reveal_tiles = reveal_phase or viewer_is_spectator or not viewer or viewer.id != player.id
     ranking = ranking_for_player(room, player.id)
     tiles: list[dict[str, Any]] = []
     for index, tile in enumerate(player.tiles):
@@ -762,6 +799,120 @@ def public_stats(player: Player) -> dict[str, Any]:
     return stats
 
 
+SERIES_STAT_FIELDS = [
+    "turns",
+    "draws",
+    "categorises",
+    "compares",
+    "compareYes",
+    "compareNo",
+    "cluesGiven",
+    "gotFiveAttempts",
+    "bestExactMatches",
+    "exactMatchesTotal",
+    "boardMarks",
+]
+
+
+def empty_series_score(player: Player) -> dict[str, Any]:
+    return {
+        "playerId": player.id,
+        "name": player.name,
+        "color": player.color,
+        "avatar": player.avatar,
+        "games": 0,
+        "wins": 0,
+        "points": 0,
+        "rankTotal": 0,
+        "medals": {"gold": 0, "silver": 0, "bronze": 0, "fourth": 0},
+        "statusCounts": {"winner": 0, "finished": 0, "survivor": 0, "unfinished": 0, "eliminated": 0},
+        "stats": {field: 0 for field in SERIES_STAT_FIELDS},
+    }
+
+
+def ensure_series_score(room: Room, player: Player) -> dict[str, Any]:
+    entry = room.series_scores.get(player.id)
+    if not entry:
+        entry = empty_series_score(player)
+        room.series_scores[player.id] = entry
+    entry["name"] = player.name
+    entry["color"] = player.color
+    entry["avatar"] = player.avatar
+    return entry
+
+
+def apply_match_to_series(room: Room) -> None:
+    player_count = max(1, len(room.players))
+    for rank in room.rankings:
+        player = get_player(room, rank.get("playerId"))
+        if not player:
+            continue
+        entry = ensure_series_score(room, player)
+        rank_num = safe_int(rank.get("rank"), player_count)
+        status = str(rank.get("status") or "unfinished")
+        points = max(0, player_count - rank_num + 1)
+        entry["games"] += 1
+        entry["points"] += points
+        entry["rankTotal"] += rank_num
+        entry["statusCounts"][status] = entry["statusCounts"].get(status, 0) + 1
+        if rank_num == 1:
+            entry["wins"] += 1
+            entry["medals"]["gold"] += 1
+        elif rank_num == 2:
+            entry["medals"]["silver"] += 1
+        elif rank_num == 3:
+            entry["medals"]["bronze"] += 1
+        elif rank_num == 4:
+            entry["medals"]["fourth"] += 1
+        for field in SERIES_STAT_FIELDS:
+            entry["stats"][field] = entry["stats"].get(field, 0) + safe_int(player.stats.get(field), 0)
+
+
+def series_standings(room: Room) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for player in sorted(room.players, key=lambda item: item.seat):
+        base = ensure_series_score(room, player)
+        entry = {
+            **base,
+            "medals": dict(base["medals"]),
+            "statusCounts": dict(base["statusCounts"]),
+            "stats": dict(base["stats"]),
+        }
+        games = max(1, entry["games"])
+        attempts = entry["stats"].get("gotFiveAttempts", 0)
+        entry["avgRank"] = round(entry["rankTotal"] / games, 2) if entry["games"] else None
+        entry["avgAccuracyPct"] = (
+            round(entry["stats"].get("exactMatchesTotal", 0) / (attempts * 5) * 100)
+            if attempts
+            else None
+        )
+        entries.append(entry)
+
+    def sort_key(entry: dict[str, Any]) -> tuple[int, int, int, float, int, int]:
+        avg_rank = entry["avgRank"] if entry["avgRank"] is not None else 99
+        return (
+            -safe_int(entry.get("wins"), 0),
+            -safe_int(entry.get("points"), 0),
+            -safe_int(entry.get("stats", {}).get("bestExactMatches"), 0),
+            avg_rank,
+            safe_int(entry.get("stats", {}).get("turns"), 0),
+            safe_int(next((player.seat for player in room.players if player.id == entry["playerId"]), 99), 99),
+        )
+
+    entries.sort(key=sort_key)
+    for index, entry in enumerate(entries):
+        entry["seriesRank"] = index + 1
+    return entries
+
+
+def match_action_counts(log: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {"draw": 0, "categorise": 0, "compare": 0, "gotfive": 0, "system": 0}
+    for item in log:
+        item_type = str(item.get("type") or "system")
+        counts[item_type] = counts.get(item_type, 0) + 1
+    return counts
+
+
 def round_info(room: Room) -> dict[str, int]:
     total = max(1, len(room.players))
     completed = room.turn_count // total
@@ -779,10 +930,15 @@ def summarize_match(room: Room) -> dict[str, Any]:
         duration = int((room.ended_at or time.time()) - room.started_at)
     rounds = round_info(room)
     return {
+        "matchIndex": room.match_index,
+        "matchTotal": room.match_total,
+        "isSeriesFinal": room.match_index >= room.match_total,
         "durationSec": duration,
         "turns": room.turn_count,
         "rounds": rounds["completed"],
         "rankings": room.rankings,
+        "actionCounts": match_action_counts(room.log),
+        "timeline": room.log[-120:],
         "players": [
             {
                 "id": player.id,
@@ -794,6 +950,17 @@ def summarize_match(room: Room) -> dict[str, Any]:
             }
             for player in room.players
         ],
+    }
+
+
+def summarize_series(room: Room) -> dict[str, Any]:
+    return {
+        "current": room.match_index,
+        "total": room.match_total,
+        "completed": len(room.match_history),
+        "isFinal": room.status == "finished",
+        "standings": series_standings(room),
+        "history": room.match_history[-5:],
     }
 
 
@@ -812,6 +979,8 @@ def serialize_room(room: Room, viewer_player_id: str | None) -> dict[str, Any]:
             "startedAt": int(room.started_at * 1000) if room.started_at else None,
             "endedAt": int(room.ended_at * 1000) if room.ended_at else None,
             "starterId": room.starter_id,
+            "matchIndex": room.match_index,
+            "matchTotal": room.match_total,
         },
         "me": {"id": viewer.id, "sessionToken": viewer.session_token} if viewer else None,
         "players": [serialize_player(room, player, viewer) for player in sorted(room.players, key=lambda item: item.seat)],
@@ -823,7 +992,8 @@ def serialize_room(room: Room, viewer_player_id: str | None) -> dict[str, Any]:
         "log": room.log[-80:],
         "chat": room.chat[-80:],
         "marks": sorted(viewer.marks) if viewer else [],
-        "match": summarize_match(room) if room.status == "finished" else None,
+        "match": summarize_match(room) if room.status in {"finished", "between_matches"} else None,
+        "series": summarize_series(room),
         "playerColors": PLAYER_COLORS,
     }
 
@@ -867,6 +1037,7 @@ def handle_create_room(client: Client, data: dict[str, Any]) -> None:
     leave_current_room(client)
     max_players = int(data.get("maxPlayers") or 4)
     max_players = min(4, max(2, max_players))
+    match_total = sanitize_match_total(data.get("matchTotal"))
     with ROOMS_LOCK:
         code = make_room_code()
         player = create_player(
@@ -875,13 +1046,25 @@ def handle_create_room(client: Client, data: dict[str, Any]) -> None:
             seat=0,
             avatar=data.get("avatar", ""),
         )
-        room = Room(code=code, max_players=max_players, host_id=player.id, players=[player])
+        room = Room(code=code, max_players=max_players, host_id=player.id, players=[player], match_total=match_total)
         room.clients.add(client)
         ROOMS[code] = room
         client.room_code = code
         client.player_id = player.id
         add_log(room, "system", None, f"{player.name} สร้างห้อง {code}")
         client.send("roomJoined", serialize_room(room, player.id))
+
+
+def handle_update_settings(client: Client, data: dict[str, Any]) -> None:
+    room = require_room(client)
+    player = require_player(room, client)
+    if player.id != room.host_id:
+        raise GameError("เฉพาะเจ้าของห้องเท่านั้น")
+    if room.status != "lobby":
+        raise GameError("แก้จำนวนเกมได้เฉพาะใน Lobby")
+    room.match_total = sanitize_match_total(data.get("matchTotal", room.match_total))
+    room.revision += 1
+    broadcast_room(room)
 
 
 def handle_join_room(client: Client, data: dict[str, Any]) -> None:
@@ -988,6 +1171,18 @@ def handle_start_game(client: Client) -> None:
     maybe_schedule_bot_turn(room)
 
 
+def handle_next_match(client: Client) -> None:
+    room = require_room(client)
+    player = require_player(room, client)
+    if player.id != room.host_id:
+        raise GameError("เฉพาะเจ้าของห้องเท่านั้น")
+    if room.status != "between_matches":
+        raise GameError("ยังไม่ถึงช่วงเริ่มเกมถัดไป")
+    start_room_game(room)
+    broadcast_room(room)
+    maybe_schedule_bot_turn(room)
+
+
 def handle_restart(client: Client) -> None:
     room = require_room(client)
     player = require_player(room, client)
@@ -1069,8 +1264,16 @@ def require_player(room: Room, client: Client) -> Player:
 
 
 def handle_message(client: Client, message: str) -> None:
+    message = message.strip()
+    if not message:
+        return
     try:
-        packet = json.loads(message)
+        try:
+            packet = json.loads(message)
+        except json.JSONDecodeError as exc:
+            print(f"Ignoring invalid WebSocket JSON: {exc}; sample={message[:120]!r}")
+            send_error(client, "ข้อมูลจาก browser มาไม่ครบ ลองกดอีกครั้งหรือรีเฟรชหน้าเว็บ")
+            return
         event = packet.get("event")
         data = packet.get("data") or {}
         if not isinstance(data, dict):
@@ -1080,6 +1283,8 @@ def handle_message(client: Client, message: str) -> None:
                 handle_create_room(client, data)
             elif event == "joinRoom":
                 handle_join_room(client, data)
+            elif event == "updateSettings":
+                handle_update_settings(client, data)
             elif event == "updateProfile":
                 handle_update_profile(client, data)
             elif event == "addBot":
@@ -1088,6 +1293,8 @@ def handle_message(client: Client, message: str) -> None:
                 handle_remove_bot(client, data)
             elif event == "startGame":
                 handle_start_game(client)
+            elif event == "nextMatch":
+                handle_next_match(client)
             elif event == "restart":
                 handle_restart(client)
             elif event == "action":
@@ -1253,11 +1460,12 @@ class GotFiveHandler(BaseHTTPRequestHandler):
             chunks.extend(chunk)
         return bytes(chunks)
 
-    def read_ws_text(self) -> str | None:
+    def read_ws_frame(self) -> tuple[bool, int, bytes] | None:
         header = self.read_exactly(2)
         if not header:
             return None
         first, second = header
+        fin = bool(first & 0x80)
         opcode = first & 0x0F
         masked = bool(second & 0x80)
         length = second & 0x7F
@@ -1271,20 +1479,61 @@ class GotFiveHandler(BaseHTTPRequestHandler):
             if not data:
                 return None
             length = struct.unpack("!Q", data)[0]
+        if length > MAX_WS_MESSAGE_BYTES:
+            return None
         mask = self.read_exactly(4) if masked else b""
+        if masked and mask is None:
+            return None
         payload = self.read_exactly(length)
         if payload is None:
             return None
         if masked:
             payload = bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
-        if opcode == 0x8:
-            return None
-        if opcode == 0x9:
-            self.send_ws_frame(payload, opcode=0xA)
-            return self.read_ws_text()
-        if opcode != 0x1:
-            return ""
-        return payload.decode("utf-8", errors="replace")
+        return fin, opcode, payload
+
+    def read_ws_text(self) -> str | None:
+        active_opcode: int | None = None
+        fragments = bytearray()
+
+        while True:
+            frame = self.read_ws_frame()
+            if frame is None:
+                return None
+            fin, opcode, payload = frame
+
+            if opcode == 0x8:
+                return None
+            if opcode == 0x9:
+                self.send_ws_frame(payload, opcode=0xA)
+                continue
+            if opcode == 0xA:
+                continue
+
+            if opcode == 0x1:
+                active_opcode = opcode
+                fragments = bytearray(payload)
+            elif opcode == 0x2:
+                active_opcode = opcode if not fin else None
+                fragments = bytearray()
+                continue
+            elif opcode == 0x0:
+                if active_opcode is None:
+                    continue
+                if active_opcode == 0x1:
+                    fragments.extend(payload)
+                if active_opcode == 0x2:
+                    if fin:
+                        active_opcode = None
+                    continue
+            else:
+                continue
+
+            if len(fragments) > MAX_WS_MESSAGE_BYTES:
+                return None
+            if fin and active_opcode == 0x1:
+                return fragments.decode("utf-8", errors="replace")
+            if fin:
+                active_opcode = None
 
     def send_ws_text(self, payload: bytes) -> None:
         self.send_ws_frame(payload, opcode=0x1)

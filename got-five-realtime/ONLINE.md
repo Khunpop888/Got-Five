@@ -198,6 +198,68 @@ http://localhost:8787
 
 ## ปัญหาที่เจอบ่อย
 
+### Render ขึ้น `Could not open requirements file`
+
+ถ้าใน Render logs เห็นข้อความนี้:
+
+```text
+ERROR: Could not open requirements file: [Errno 2] No such file or directory: 'requirements.txt'
+```
+
+แปลว่า Render มองหาไฟล์ `requirements.txt` ที่หน้าแรกสุดของ repo แต่ไม่เจอ
+
+วิธีแก้แบบเร็ว:
+
+1. เข้า GitHub repo ของเกม
+2. กด Add file > Create new file
+3. ตั้งชื่อไฟล์ว่า:
+
+```text
+requirements.txt
+```
+
+4. ใส่ข้อความนี้ลงไป:
+
+```text
+# This project currently uses only the Python standard library.
+```
+
+5. กด Commit changes
+6. กลับไป Render แล้วกด Manual Deploy > Deploy latest commit
+
+ถ้ายัง fail ต่อ ให้เช็กว่าไฟล์เหล่านี้ต้องอยู่หน้าแรกสุดของ repo ไม่ได้อยู่ในโฟลเดอร์ซ้อนอีกชั้น:
+
+- `server.py`
+- `requirements.txt`
+- `render.yaml`
+- `public/`
+
+ตัวอย่างที่ถูก:
+
+```text
+Got-Five/
+  server.py
+  requirements.txt
+  render.yaml
+  public/
+```
+
+ตัวอย่างที่ผิด:
+
+```text
+Got-Five/
+  got-five-realtime/
+    server.py
+    requirements.txt
+```
+
+ถ้าเป็นแบบผิด ให้เลือกอย่างใดอย่างหนึ่ง:
+
+- ย้ายไฟล์ข้างใน `got-five-realtime/` ออกมาไว้หน้าแรกสุดของ repo
+- หรือไปที่ Render > Settings > Root Directory แล้วใส่ `got-five-realtime`
+
+หลังแก้แล้วกด Manual Deploy ใหม่
+
 ถ้าเปิดเว็บแล้วเข้าไม่ได้:
 
 - เช็กว่า server ขึ้นอยู่ไหม
@@ -210,6 +272,39 @@ http://localhost:8787
 - ให้ทุกคนใช้ invite link จากห้องเดียวกัน
 - อย่าเปิดหลายแท็บด้วยชื่อเดียวกันตอนทดสอบ
 - ถ้าเพิ่ง deploy ใหม่ ให้ทุกคน refresh
+
+ถ้าเพื่อนกดลิงก์แล้วขึ้นว่า `ไม่พบห้องนี้` แต่เครื่องเจ้าของห้องยังเห็นห้องอยู่:
+
+- ห้องนั้นเป็นห้องเก่าที่ค้างอยู่ในหน้า browser ของเจ้าของห้อง
+- Render เพิ่ง restart/deploy ทำให้ room state ใน memory หายไปแล้ว
+- ให้เจ้าของห้อง refresh หน้าเว็บก่อน
+- ถ้าหน้าเว็บเด้งกลับไปหน้าเริ่มเกม ให้สร้างห้องใหม่ แล้ว copy invite link ใหม่ส่งให้เพื่อน
+- ลิงก์ห้องเก่าก่อน restart/deploy ใช้ต่อไม่ได้
+
+### Render เปิดเว็บได้ แต่กดสร้างห้อง/เริ่มเกมแล้วขึ้น JSON error
+
+ถ้า Render logs มีข้อความประมาณนี้:
+
+```text
+json.decoder.JSONDecodeError: Unterminated string
+json.decoder.JSONDecodeError: Expecting value
+```
+
+ให้ใช้ไฟล์ล่าสุดที่มี `server_fixed.py` แล้วตั้งค่า Render แบบนี้:
+
+ถ้า Render ใช้ Root Directory เป็น `got-five-realtime`:
+
+```text
+python server_fixed.py
+```
+
+ถ้า Render ไม่ได้ตั้ง Root Directory และไฟล์อยู่ในโฟลเดอร์ `got-five-realtime/`:
+
+```text
+python got-five-realtime/server_fixed.py
+```
+
+สาเหตุคือ hosting/proxy อาจแยก WebSocket message ที่มีรูปโปรไฟล์ base64 ออกเป็นหลาย frame ทำให้ `server.py` เวอร์ชันเก่าอ่าน JSON ได้ไม่ครบ ส่วน `server_fixed.py` จะรวม frame ให้ครบก่อนประมวลผล
 
 ถ้าห้องหาย:
 

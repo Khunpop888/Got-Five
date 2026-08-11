@@ -31,6 +31,8 @@ def handle_message(client: server.Client, message: str) -> None:
                 server.handle_create_room(client, data)
             elif event == "joinRoom":
                 server.handle_join_room(client, data)
+            elif event == "updateSettings":
+                server.handle_update_settings(client, data)
             elif event == "updateProfile":
                 server.handle_update_profile(client, data)
             elif event == "addBot":
@@ -39,6 +41,8 @@ def handle_message(client: server.Client, message: str) -> None:
                 server.handle_remove_bot(client, data)
             elif event == "startGame":
                 server.handle_start_game(client)
+            elif event == "nextMatch":
+                server.handle_next_match(client)
             elif event == "restart":
                 server.handle_restart(client)
             elif event == "action":
