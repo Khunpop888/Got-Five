@@ -23,11 +23,14 @@ const ui = {
   connected: false,
   socket: null,
   reconnectTimer: null,
+  pendingAvatarSync: false,
+  validatingRoom: false,
   state: null,
   name: localStorage.getItem("gotfive.name") || "Pop",
   color: localStorage.getItem("gotfive.color") || "cyan",
   avatar: localStorage.getItem("gotfive.avatar") || "",
   maxPlayers: 4,
+  matchTotal: Math.min(5, Math.max(1, Number(localStorage.getItem("gotfive.matchTotal") || 1) || 1)),
   joinCode: roomCodeFromPath() || "",
   selectedCenterTileId: null,
   responderId: null,
@@ -42,6 +45,7 @@ const ui = {
 
 connect();
 setInterval(updateClocks, 1000);
+setInterval(sendHeartbeat, 25000);
 
 function connect() {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
@@ -52,16 +56,25 @@ function connect() {
     ui.connected = true;
     const routeCode = roomCodeFromPath();
     const token = routeCode ? getSessionToken(routeCode) : "";
-    if (routeCode && token && !ui.state) {
-      send("joinRoom", { code: routeCode, name: ui.name, color: ui.color, avatar: ui.avatar, sessionToken: token });
+    if (routeCode && token) {
+      ui.validatingRoom = true;
+      send("joinRoom", { code: routeCode, name: ui.name, color: ui.color, sessionToken: token });
+    } else if (ui.state?.room?.code) {
+      send("sync");
     }
     render();
   });
 
   socket.addEventListener("message", (event) => {
-    const packet = JSON.parse(event.data);
+    let packet;
+    try {
+      packet = JSON.parse(event.data);
+    } catch {
+      return;
+    }
     if (packet.event === "connected") return;
     if (packet.event === "roomJoined" || packet.event === "state" || packet.event === "chat") {
+      ui.validatingRoom = false;
       ui.state = packet.data;
       const chatLength = packet.data?.chat?.length || 0;
       if (packet.event === "roomJoined" || ui.chatOpen) {
@@ -72,6 +85,7 @@ function connect() {
         history.replaceState(null, "", `/room/${packet.data.room.code}`);
       }
       syncIdentityFromState(packet.data);
+      syncPendingAvatar(packet.event, packet.data);
       if (packet.data?.eventData) {
         ui.lastEvent = packet.data.eventData;
         window.setTimeout(() => {
@@ -90,7 +104,7 @@ function connect() {
       return;
     }
     if (packet.event === "error") {
-      showToast(packet.data?.message || "เกิดข้อผิดพลาด");
+      handleServerError(packet.data?.message || "เกิดข้อผิดพลาด");
     }
   });
 
@@ -108,6 +122,29 @@ function send(event, data = {}) {
     return;
   }
   ui.socket.send(JSON.stringify({ event, data }));
+}
+
+function sendHeartbeat() {
+  if (!ui.connected || ui.validatingRoom || !ui.state?.room?.code) return;
+  if (!ui.socket || ui.socket.readyState !== WebSocket.OPEN) return;
+  ui.socket.send(JSON.stringify({ event: "sync", data: {} }));
+}
+
+function handleServerError(message) {
+  const text = message || "เกิดข้อผิดพลาด";
+  const routeCode = roomCodeFromPath();
+  if (routeCode && text.includes("ไม่พบห้องนี้")) {
+    clearSessionToken(routeCode);
+    ui.state = null;
+    ui.joinCode = routeCode;
+    ui.validatingRoom = false;
+    history.replaceState(null, "", "/");
+    showToast("ห้องนี้หมดอายุหรือ server restart แล้ว กรุณาสร้างห้องใหม่");
+    render();
+    return;
+  }
+  ui.validatingRoom = false;
+  showToast(text);
 }
 
 function render() {
@@ -190,6 +227,12 @@ function renderStart() {
                 ${[2, 3, 4].map((count) => `<option value="${count}" ${ui.maxPlayers === count ? "selected" : ""}>${count} คน</option>`).join("")}
               </select>
             </label>
+            <label class="field">
+              <span>จำนวนเกมแข่งขัน</span>
+              <select id="match-total" class="select">
+                ${[1, 2, 3, 4, 5].map((count) => `<option value="${count}" ${ui.matchTotal === count ? "selected" : ""}>${count} เกม</option>`).join("")}
+              </select>
+            </label>
             <button id="create-room" class="btn primary">สร้างห้องใหม่</button>
             <div class="field">
               <span class="field-label">รหัสห้อง</span>
@@ -198,7 +241,7 @@ function renderStart() {
                 <button id="join-room" class="btn violet">เข้าห้อง</button>
               </div>
             </div>
-            <p class="helper">${ui.connected ? "สถานะ: ออนไลน์กับ local server" : "สถานะ: กำลัง reconnect"}</p>
+            <p class="helper">${ui.connected ? "สถานะ: ออนไลน์กับ server" : "สถานะ: กำลัง reconnect"}</p>
           </div>
         </section>
       </div>
@@ -245,6 +288,12 @@ function renderLobby() {
                 ${palette.map((color) => renderSwatch(color, me?.color || ui.color)).join("")}
               </div>
             </div>
+            <label class="field">
+              <span>จำนวนเกมแข่งขัน</span>
+              <select id="lobby-match-total" class="select" ${me?.isHost ? "" : "disabled"}>
+                ${[1, 2, 3, 4, 5].map((count) => `<option value="${count}" ${s.room.matchTotal === count ? "selected" : ""}>${count} เกม</option>`).join("")}
+              </select>
+            </label>
             <button id="save-profile" class="btn ghost">บันทึกโปรไฟล์</button>
 
             <div>
@@ -273,9 +322,12 @@ function renderGame() {
   const starterId = s.room.starterId || s.log.find((item) => item.payload?.starterId)?.payload?.starterId;
   const starter = s.players.find((player) => player.id === starterId);
   const round = getRoundInfo(s);
+  const series = s.series || { current: s.room.matchIndex || 1, total: s.room.matchTotal || 1, completed: 0 };
   const statusText = s.room.status === "finished"
-    ? "จบเกมแล้ว"
-    : current ? `ตาของ ${current.name} (${phaseName(s.room.phase)})` : "กำลังรอ";
+    ? "จบซีรีส์แล้ว"
+    : s.room.status === "between_matches"
+      ? `จบเกมที่ ${series.completed}/${series.total} · รอเกมถัดไป`
+      : current ? `ตาของ ${current.name} (${phaseName(s.room.phase)})` : "กำลังรอ";
   const opponents = s.players.filter((player) => player.id !== me?.id);
   const isMyTurn = s.turnPlayerId === me?.id && me?.active && s.room.status === "playing";
   const canDraw = isMyTurn && s.room.phase === "draw";
@@ -289,6 +341,7 @@ function renderGame() {
           <div class="topbar-meta">
             <span class="small-pill dark">Room ${escapeHtml(s.room.code)}</span>
             <span class="small-pill dark">${escapeHtml(statusText)}</span>
+            <span class="small-pill dark">เกมที่ ${series.current}/${series.total}</span>
             <span class="small-pill dark" data-clock-start="${s.room.startedAt || ""}" data-clock-end="${s.room.endedAt || ""}">00:00</span>
             <span class="small-pill dark">รอบที่ ${round.current} · คนที่ ${round.position}/${round.total}</span>
             ${starter ? `<span class="small-pill dark starter-pill">สุ่มเริ่ม: ${escapeHtml(starter.name)}</span>` : ""}
@@ -297,7 +350,8 @@ function renderGame() {
         <div class="button-row topbar-actions">
           <button id="copy-invite" class="btn ghost">Copy Invite</button>
           ${s.room.status === "playing" && me?.active ? `<button id="open-guess" class="btn rose">GOT FIVE!</button>` : ""}
-          ${me?.isHost ? `<button id="restart-room" class="btn ghost">${s.room.status === "finished" ? "กลับ Lobby" : "Reset"}</button>` : ""}
+          ${me?.isHost && s.room.status === "between_matches" ? `<button id="next-match" class="btn primary">เริ่มเกมถัดไป</button>` : ""}
+          ${me?.isHost ? `<button id="restart-room" class="btn ghost">${s.room.status === "finished" || s.room.status === "between_matches" ? "กลับ Lobby" : "Reset"}</button>` : ""}
         </div>
       </header>
 
@@ -370,7 +424,7 @@ function renderGame() {
       ${renderFloatingChat()}
       ${ui.showGuess ? renderGuessModal() : ""}
       ${ui.guessResult ? renderGuessResult() : ""}
-      ${s.room.status === "finished" && !ui.guessResult ? renderPostMatch() : ""}
+      ${s.room.status !== "playing" && s.room.status !== "lobby" && !ui.guessResult ? renderPostMatch() : ""}
     </section>
   `;
 }
@@ -729,32 +783,195 @@ function renderGuessResult() {
 function renderPostMatch() {
   const match = ui.state.match;
   if (!match) return "";
+  const series = ui.state.series || { standings: match.rankings || [], current: 1, total: 1, completed: 1, isFinal: true, history: [match] };
+  const standings = series.standings?.length ? series.standings : match.rankings;
+  const isFinal = Boolean(series.isFinal || match.isSeriesFinal);
   const rounds = match.rounds ?? Math.floor((match.turns || 0) / Math.max(1, ui.state.players.length));
+  const actionCounts = match.actionCounts || {};
+  const actionTotal = (actionCounts.draw || 0) + (actionCounts.categorise || 0) + (actionCounts.compare || 0) + (actionCounts.gotfive || 0);
   return `
     <div class="modal-backdrop">
       <section class="modal-card postmatch-card">
         <div class="postmatch-head">
           <div>
-            <h2>สรุปผลการแข่งขัน</h2>
-            <p class="helper">เวลา ${formatDuration(match.durationSec)} · ${rounds} รอบเต็ม</p>
+            <span class="brand-kicker">${isFinal ? "Final Awards" : "Round Summary"}</span>
+            <h2>${isFinal ? "สรุปผลการแข่งขัน" : `สรุปเกมที่ ${match.matchIndex}/${match.matchTotal}`}</h2>
+            <p class="helper">เวลา ${formatDuration(match.durationSec)} · ${rounds} รอบโต๊ะ · ${match.turns || 0} เทิร์น · ${actionTotal} แอคชั่น</p>
           </div>
-          ${getMe()?.isHost ? `<button id="restart-room-modal" class="btn ghost">กลับ Lobby</button>` : ""}
+          <div class="button-row">
+            ${getMe()?.isHost && ui.state.room.status === "between_matches" ? `<button id="next-match-modal" class="btn primary">เริ่มเกมถัดไป</button>` : ""}
+            ${getMe()?.isHost ? `<button id="restart-room-modal" class="btn ghost">กลับ Lobby</button>` : ""}
+          </div>
         </div>
-        <div class="postmatch-summary">
-          ${match.rankings.map((rank) => `
-            <div class="rank-card rank-${rank.rank}">
-              <span class="rank-num">#${rank.rank}</span>
-              <strong>${escapeHtml(rank.name)}</strong>
-              <div class="helper">${rankStatus(rank.status)} · Score ${rank.score}/5</div>
+
+        ${isFinal ? renderPodium(standings) : renderInterimStandings(standings, series)}
+
+        <div class="summary-metrics">
+          <div><strong>${series.completed}/${series.total}</strong><span>เกมที่เล่นแล้ว</span></div>
+          <div><strong>${actionCounts.draw || 0}</strong><span>จั่วไทล์</span></div>
+          <div><strong>${actionCounts.categorise || 0}</strong><span>Categorise</span></div>
+          <div><strong>${actionCounts.compare || 0}</strong><span>Compare</span></div>
+          <div><strong>${actionCounts.gotfive || 0}</strong><span>GOT FIVE!</span></div>
+        </div>
+
+        ${renderSeriesStandingTable(standings, isFinal)}
+
+        <div class="summary-grid">
+          <section class="summary-section">
+            <h3>สถิติเกมนี้</h3>
+            <div class="stats-flex">
+              ${match.players.map((player) => renderPlayerStatCard(player)).join("")}
             </div>
-          `).join("")}
+          </section>
+          <section class="summary-section">
+            <h3>ประวัติแอคชั่นเกมนี้</h3>
+            <div class="summary-timeline">
+              ${(match.timeline || []).length ? (match.timeline || []).map((item) => renderSummaryTimelineItem(item)).join("") : `<div class="empty-state">ไม่มีประวัติ</div>`}
+            </div>
+          </section>
         </div>
-        <div class="stats-flex">
-          ${match.players.map((player) => renderPlayerStatCard(player)).join("")}
-        </div>
+
+        ${isFinal && (series.history || []).length > 1 ? renderSeriesHistory(series) : ""}
       </section>
     </div>
   `;
+}
+
+function renderPodium(standings) {
+  const top = [1, 2, 3, 4].map((rank) => standings.find((entry) => Number(entry.seriesRank || entry.rank) === rank)).filter(Boolean);
+  if (!top.length) return "";
+  return `
+    <section class="podium-stage">
+      ${top.map((entry) => `
+        <article class="podium-place place-${entry.seriesRank || entry.rank}" data-player-color="${escapeHtml(entry.color || "slate")}">
+          <div class="podium-character">
+            ${avatarHtml(entry, "podium-avatar")}
+            <span class="medal medal-${entry.seriesRank || entry.rank}">${medalLabel(entry.seriesRank || entry.rank)}</span>
+          </div>
+          <strong>${escapeHtml(entry.name)}</strong>
+          <span>${entry.wins || 0} ชนะ · ${entry.points || 0} แต้ม</span>
+          <b>${entry.seriesRank || entry.rank}</b>
+        </article>
+      `).join("")}
+    </section>
+  `;
+}
+
+function renderInterimStandings(standings, series) {
+  return `
+    <section class="interim-board">
+      <div>
+        <h3>ตารางคะแนนชั่วคราว</h3>
+        <p class="helper">ยังไม่มอบรางวัลรวม รอจบเกมที่ ${series.total}</p>
+      </div>
+      <div class="postmatch-summary">
+        ${standings.map((entry) => `
+          <div class="rank-card rank-${entry.seriesRank || entry.rank}" data-player-color="${escapeHtml(entry.color || "slate")}">
+            <span class="rank-num">#${entry.seriesRank || entry.rank}</span>
+            <strong>${escapeHtml(entry.name)}</strong>
+            <div class="helper">${entry.wins || 0} ชนะ · ${entry.points || 0} แต้ม · เฉลี่ยอันดับ ${entry.avgRank ?? "-"}</div>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderSeriesStandingTable(standings, isFinal) {
+  if (!standings?.length) return "";
+  return `
+    <section class="summary-section">
+      <h3>${isFinal ? "ตารางคะแนนรวม" : "ตารางคะแนนก่อนเกมถัดไป"}</h3>
+      <div class="series-table-wrap">
+        <table class="series-table">
+          <thead>
+            <tr>
+              <th>อันดับ</th>
+              <th>ผู้เล่น</th>
+              <th>เหรียญ</th>
+              <th>ชนะ</th>
+              <th>แต้ม</th>
+              <th>เฉลี่ยอันดับ</th>
+              <th>คำใบ้/Compare</th>
+              <th>ทายผล</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${standings.map((entry) => {
+              const stats = entry.stats || {};
+              const medals = entry.medals || {};
+              const attempts = stats.gotFiveAttempts || 0;
+              const accuracy = entry.avgAccuracyPct === null || entry.avgAccuracyPct === undefined ? "ยังไม่ทาย" : `${entry.avgAccuracyPct}%`;
+              return `
+                <tr data-player-color="${escapeHtml(entry.color || "slate")}">
+                  <td><span class="rank-num">#${entry.seriesRank || entry.rank}</span></td>
+                  <td class="series-player">${avatarHtml(entry, "badge")}<strong>${escapeHtml(entry.name)}</strong></td>
+                  <td>🥇${medals.gold || 0} 🥈${medals.silver || 0} 🥉${medals.bronze || 0}</td>
+                  <td>${entry.wins || 0}</td>
+                  <td>${entry.points || 0}</td>
+                  <td>${entry.avgRank ?? "-"}</td>
+                  <td>C ${stats.categorises || 0} / Q ${stats.compares || 0} / ให้ ${stats.cluesGiven || 0}</td>
+                  <td>${attempts} ครั้ง · ${accuracy}</td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function renderSummaryTimelineItem(item) {
+  const actor = logActor(item);
+  const type = item.type || "system";
+  return `
+    <article class="summary-action log-${escapeHtml(type)}" data-player-color="${escapeHtml(actor?.color || "slate")}">
+      ${avatarHtml(actor, "log-avatar")}
+      <div>
+        <div class="log-item-head">
+          <div class="log-title">
+            <strong>${escapeHtml(actor?.name || item.actorName || "System")}</strong>
+            <span>${escapeHtml(logSubtitle(type))}</span>
+          </div>
+          <span class="action-badge action-${escapeHtml(type)}">${escapeHtml(typeName(type))}</span>
+        </div>
+        <div class="log-body">${renderLogBody(item, actor)}</div>
+      </div>
+    </article>
+  `;
+}
+
+function renderSeriesHistory(series) {
+  const history = series.history || [];
+  return `
+    <section class="summary-section">
+      <h3>ประวัติทุกเกมในซีรีส์</h3>
+      <div class="series-history">
+        ${history.map((match) => {
+          const winner = match.rankings?.[0];
+          const counts = match.actionCounts || {};
+          return `
+            <details class="history-match" ${match.isSeriesFinal ? "open" : ""}>
+              <summary>
+                <strong>เกมที่ ${match.matchIndex}/${match.matchTotal}</strong>
+                <span>${winner ? `#1 ${escapeHtml(winner.name)}` : "ยังไม่มีผู้ชนะ"}</span>
+                <small>${formatDuration(match.durationSec)} · Draw ${counts.draw || 0} · C ${counts.categorise || 0} · Q ${counts.compare || 0}</small>
+              </summary>
+              <div class="summary-timeline compact">
+                ${(match.timeline || []).map((item) => renderSummaryTimelineItem(item)).join("")}
+              </div>
+            </details>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function medalLabel(rank) {
+  const labels = { 1: "GOLD", 2: "SILVER", 3: "BRONZE", 4: "4TH", 5: "5TH" };
+  return labels[rank] || `#${rank}`;
 }
 
 function renderPlayerStatCard(player) {
@@ -779,9 +996,11 @@ function renderPlayerStatCard(player) {
         <b style="width:${comparePct}%"></b>
       </div>
       <div class="stat-lines">
+        <span>จั่ว ${st.draws || 0}</span>
         <span>Categorise ${cat}</span>
         <span>Compare ${compareTotal} (ใช่ ${st.compareYes || 0} / ไม่ใช่ ${st.compareNo || 0})</span>
         <span>ให้คำใบ้ ${st.cluesGiven || 0}</span>
+        <span>ขีดบอร์ด ${st.boardMarks || 0}</span>
         <span>ทาย ${attempts} ครั้ง · ${accuracy}</span>
       </div>
     </article>
@@ -911,6 +1130,10 @@ function bindStart() {
   bind("#max-players", "change", (event) => {
     ui.maxPlayers = Number(event.target.value);
   });
+  bind("#match-total", "change", (event) => {
+    ui.matchTotal = Number(event.target.value);
+    localStorage.setItem("gotfive.matchTotal", ui.matchTotal);
+  });
   bindAll(".swatch", "click", (event) => {
     ui.color = event.currentTarget.dataset.color;
     localStorage.setItem("gotfive.color", ui.color);
@@ -918,15 +1141,16 @@ function bindStart() {
   });
   bind("#create-room", "click", () => {
     saveIdentityFromStart();
-    send("createRoom", { name: ui.name, color: ui.color, avatar: ui.avatar, maxPlayers: ui.maxPlayers });
+    ui.pendingAvatarSync = Boolean(ui.avatar);
+    send("createRoom", { name: ui.name, color: ui.color, maxPlayers: ui.maxPlayers, matchTotal: ui.matchTotal });
   });
   bind("#join-room", "click", () => {
     saveIdentityFromStart();
+    ui.pendingAvatarSync = Boolean(ui.avatar);
     send("joinRoom", {
       code: ui.joinCode,
       name: ui.name,
       color: ui.color,
-      avatar: ui.avatar,
       sessionToken: getSessionToken(ui.joinCode),
     });
   });
@@ -940,6 +1164,11 @@ function bindLobby() {
     ui.name = name;
     localStorage.setItem("gotfive.name", ui.name);
     send("updateProfile", { name, color: ui.color, avatar: ui.avatar });
+  });
+  bind("#lobby-match-total", "change", (event) => {
+    ui.matchTotal = Number(event.target.value);
+    localStorage.setItem("gotfive.matchTotal", ui.matchTotal);
+    send("updateSettings", { matchTotal: ui.matchTotal });
   });
   bindAll(".swatch", "click", (event) => {
     ui.color = event.currentTarget.dataset.color;
@@ -956,7 +1185,9 @@ function bindLobby() {
 function bindGame() {
   bind("#copy-invite", "click", copyInvite);
   bind("#restart-room", "click", () => send("restart"));
+  bind("#next-match", "click", () => send("nextMatch"));
   bind("#restart-room-modal", "click", () => send("restart"));
+  bind("#next-match-modal", "click", () => send("nextMatch"));
   bindAll("[data-chat-toggle]", "click", () => {
     ui.chatOpen = !ui.chatOpen;
     if (ui.chatOpen) {
@@ -1066,10 +1297,21 @@ function syncIdentityFromState(state) {
   if (!me) return;
   ui.name = me.name || ui.name;
   ui.color = me.color || ui.color;
-  if ("avatar" in me) ui.avatar = me.avatar || "";
+  if ("avatar" in me && (me.avatar || !ui.pendingAvatarSync)) ui.avatar = me.avatar || "";
+  ui.matchTotal = Math.min(5, Math.max(1, Number(state?.room?.matchTotal || ui.matchTotal || 1) || 1));
   localStorage.setItem("gotfive.name", ui.name);
   localStorage.setItem("gotfive.color", ui.color);
   localStorage.setItem("gotfive.avatar", ui.avatar);
+  localStorage.setItem("gotfive.matchTotal", ui.matchTotal);
+}
+
+function syncPendingAvatar(eventName, state) {
+  if (eventName !== "roomJoined" || !ui.pendingAvatarSync || !ui.avatar) return;
+  if (state?.room?.status !== "lobby") return;
+  ui.pendingAvatarSync = false;
+  window.setTimeout(() => {
+    send("updateProfile", { name: ui.name, color: ui.color, avatar: ui.avatar });
+  }, 50);
 }
 
 function bindAvatarControls(prefix, syncProfile = false) {
@@ -1192,6 +1434,10 @@ function setSessionToken(code, token) {
   localStorage.setItem(`gotfive.session.${String(code).toUpperCase()}`, token);
 }
 
+function clearSessionToken(code) {
+  localStorage.removeItem(`gotfive.session.${String(code || "").toUpperCase()}`);
+}
+
 function notesKey() {
   const code = ui.state?.room?.code || "draft";
   const me = ui.state?.me?.id || "me";
@@ -1231,7 +1477,7 @@ function actionHint(canDraw, canAction) {
 }
 
 function phaseName(phase) {
-  const names = { lobby: "Lobby", draw: "จั่ว", action: "คำใบ้", finished: "จบเกม" };
+  const names = { lobby: "Lobby", draw: "จั่ว", action: "คำใบ้", between: "พักเกม", finished: "จบเกม" };
   return names[phase] || phase;
 }
 
