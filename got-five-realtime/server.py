@@ -924,6 +924,132 @@ def round_info(room: Room) -> dict[str, int]:
     }
 
 
+def number_color_index(num: int) -> int:
+    return (num - 1) % 5
+
+
+def number_dots(num: int) -> int:
+    return (((num - 1) // 5) % 3) + 1
+
+
+def bot_visible_numbers(room: Room, player: Player) -> set[int]:
+    numbers = {tile.num for tile in room.center}
+    for other in room.players:
+        if other.id != player.id:
+            numbers.update(tile.num for tile in other.tiles)
+        for notch in other.notches:
+            numbers.update(tile.num for tile in notch)
+        for stack in other.compares:
+            numbers.update(entry["tile"].num for entry in stack)
+    return numbers
+
+
+def bot_slot_candidates(room: Room, player: Player) -> list[list[int]]:
+    visible = bot_visible_numbers(room, player)
+    candidates: list[list[int]] = []
+    for slot, hidden_tile in enumerate(player.tiles):
+        slot_candidates: list[int] = []
+        for num in range(1, 61):
+            if number_color_index(num) != hidden_tile.color_index:
+                continue
+            if num in visible:
+                continue
+            if any(
+                (slot < notch_index and num >= clue.num) or (slot >= notch_index and num <= clue.num)
+                for notch_index, notch in enumerate(player.notches)
+                for clue in notch
+            ):
+                continue
+            if any(
+                (entry["isSame"] and number_dots(num) != entry["tile"].dots)
+                or (not entry["isSame"] and number_dots(num) == entry["tile"].dots)
+                for entry in player.compares[slot]
+            ):
+                continue
+            slot_candidates.append(num)
+        candidates.append(slot_candidates)
+    return candidates
+
+
+def bot_possible_assignments(room: Room, player: Player, limit: int = 2) -> tuple[list[list[int]], list[list[int]]]:
+    if len(player.tiles) != 5:
+        return [], []
+    candidates = bot_slot_candidates(room, player)
+    assignments: list[list[int]] = []
+
+    def walk(slot: int, previous: int, chosen: list[int]) -> None:
+        if len(assignments) >= limit:
+            return
+        if slot == len(candidates):
+            assignments.append(list(chosen))
+            return
+        for num in candidates[slot]:
+            if num <= previous or num in chosen:
+                continue
+            chosen.append(num)
+            walk(slot + 1, num, chosen)
+            chosen.pop()
+
+    walk(0, 0, [])
+    return assignments, candidates
+
+
+def bot_certain_guess(room: Room, player: Player) -> list[int] | None:
+    assignments, _ = bot_possible_assignments(room, player, limit=2)
+    return assignments[0] if len(assignments) == 1 else None
+
+
+def bot_best_compare_choice(room: Room, candidates: list[list[int]]) -> tuple[Tile, int, float] | None:
+    best: tuple[Tile, int, float] | None = None
+    for tile in room.center:
+        for slot, slot_candidates in enumerate(candidates):
+            if len(slot_candidates) < 2:
+                continue
+            yes = sum(1 for num in slot_candidates if number_dots(num) == tile.dots)
+            no = len(slot_candidates) - yes
+            if not yes or not no:
+                continue
+            balance = min(yes, no) / len(slot_candidates)
+            score = balance * 4 + min(len(slot_candidates), 12) / 30
+            if not best or score > best[2]:
+                best = (tile, slot, score)
+    return best
+
+
+def bot_best_categorise_choice(room: Room, assignments: list[list[int]]) -> tuple[Tile, float] | None:
+    if not assignments:
+        return None
+    best: tuple[Tile, float] | None = None
+    for tile in room.center:
+        buckets: dict[int, int] = {}
+        for assignment in assignments:
+            notch = sum(1 for num in assignment if tile.num > num)
+            buckets[notch] = buckets.get(notch, 0) + 1
+        if len(buckets) < 2:
+            continue
+        total = sum(buckets.values())
+        balance = 1 - (max(buckets.values()) / total)
+        score = (len(buckets) - 1) * 0.45 + balance * 1.4
+        if not best or score > best[1]:
+            best = (tile, score)
+    return best
+
+
+def bot_choose_responder(room: Room, player: Player) -> Player | None:
+    responders = [item for item in room.players if item.active and item.id != player.id]
+    if not responders:
+        return None
+    responders.sort(key=lambda item: (item.kind == "bot", item.seat))
+    return responders[0]
+
+
+def bot_choose_draw_color(room: Room, player: Player) -> int | None:
+    available = [index for index, deck in enumerate(room.decks) if deck]
+    if not available:
+        return None
+    return max(available, key=lambda index: (len(room.decks[index]), -index))
+
+
 def summarize_match(room: Room) -> dict[str, Any]:
     duration = 0
     if room.started_at:
@@ -1345,14 +1471,15 @@ def maybe_schedule_bot_turn(room: Room) -> None:
 
 
 def run_bot_turn(room: Room, player: Player) -> None:
-    if room.turn_count >= 14 and random.random() < 0.08:
-        apply_guess(room, player, [tile.num for tile in player.tiles])
+    certain_guess = bot_certain_guess(room, player)
+    if certain_guess:
+        apply_guess(room, player, certain_guess)
         return
 
     if room.phase == "draw":
-        available = [index for index, deck in enumerate(room.decks) if deck]
-        if available:
-            apply_draw(room, player, random.choice(available))
+        draw_color = bot_choose_draw_color(room, player)
+        if draw_color is not None:
+            apply_draw(room, player, draw_color)
         elif room.center:
             room.phase = "action"
         else:
@@ -1362,16 +1489,26 @@ def run_bot_turn(room: Room, player: Player) -> None:
     if room.status != "playing" or room.phase != "action" or not room.center:
         return
 
-    responders = [item for item in room.players if item.active and item.id != player.id]
-    if not responders:
+    responder = bot_choose_responder(room, player)
+    if not responder:
         end_turn(room)
         return
-    responder = random.choice(responders)
-    tile = random.choice(room.center)
-    if random.random() < 0.55:
+
+    assignments, candidates = bot_possible_assignments(room, player, limit=80)
+    compare_choice = bot_best_compare_choice(room, candidates)
+    categorise_choice = bot_best_categorise_choice(room, assignments)
+    if compare_choice and (not categorise_choice or compare_choice[2] >= categorise_choice[1]):
+        tile, slot, _score = compare_choice
+        apply_compare(room, player, responder.id, tile.id, slot)
+    elif categorise_choice:
+        tile, _score = categorise_choice
         apply_categorise(room, player, responder.id, tile.id)
+    elif compare_choice:
+        tile, slot, _score = compare_choice
+        apply_compare(room, player, responder.id, tile.id, slot)
     else:
-        apply_compare(room, player, responder.id, tile.id, random.randrange(0, len(player.tiles)))
+        tile = random.choice(room.center)
+        apply_categorise(room, player, responder.id, tile.id)
 
 
 class GotFiveHandler(BaseHTTPRequestHandler):

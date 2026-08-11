@@ -18,6 +18,7 @@ const FALLBACK_COLORS = [
   { key: "slate", name: "Slate", hex: "#475569" },
   { key: "zinc", name: "Zinc", hex: "#3f3f46" },
 ];
+const SAVED_PLAYER_NAME = localStorage.getItem("gotfive.name") || "";
 
 const ui = {
   connected: false,
@@ -26,7 +27,7 @@ const ui = {
   pendingAvatarSync: false,
   validatingRoom: false,
   state: null,
-  name: localStorage.getItem("gotfive.name") || "Pop",
+  name: SAVED_PLAYER_NAME === "Pop" ? "" : SAVED_PLAYER_NAME,
   color: localStorage.getItem("gotfive.color") || "cyan",
   avatar: localStorage.getItem("gotfive.avatar") || "",
   maxPlayers: 4,
@@ -212,7 +213,7 @@ function renderStart() {
             </div>
             <label class="field">
               <span>ชื่อผู้เล่น</span>
-              <input id="start-name" class="input" maxlength="24" value="${escapeHtml(ui.name)}">
+              <input id="start-name" class="input" maxlength="24" value="${escapeHtml(ui.name)}" placeholder="พิมพ์ชื่อของคุณ">
             </label>
             ${renderAvatarPicker("start", ui.avatar, ui.name, ui.color)}
             <div class="field">
@@ -439,7 +440,7 @@ function renderActionControls(canAction) {
   const disabled = !canAction || !ui.selectedCenterTileId || !ui.responderId;
   return `
     <div class="action-grid" style="margin-top: 12px;">
-      <label class="field">
+      <label class="field responder-field">
         <span>คนตอบคำใบ้</span>
         <select id="responder" class="select" ${canAction ? "" : "disabled"}>
           ${responders.map((player) => `<option value="${escapeHtml(player.id)}" ${player.id === ui.responderId ? "selected" : ""}>${escapeHtml(player.name)}</option>`).join("")}
@@ -1140,12 +1141,12 @@ function bindStart() {
     render();
   });
   bind("#create-room", "click", () => {
-    saveIdentityFromStart();
+    if (!saveIdentityFromStart()) return;
     ui.pendingAvatarSync = Boolean(ui.avatar);
     send("createRoom", { name: ui.name, color: ui.color, maxPlayers: ui.maxPlayers, matchTotal: ui.matchTotal });
   });
   bind("#join-room", "click", () => {
-    saveIdentityFromStart();
+    if (!saveIdentityFromStart()) return;
     ui.pendingAvatarSync = Boolean(ui.avatar);
     send("joinRoom", {
       code: ui.joinCode,
@@ -1285,11 +1286,17 @@ function sendChat() {
 }
 
 function saveIdentityFromStart() {
-  const name = document.querySelector("#start-name")?.value || ui.name;
-  ui.name = name.trim() || "Player";
+  const name = (document.querySelector("#start-name")?.value || "").trim();
+  if (!name) {
+    showToast("พิมพ์ชื่อผู้เล่นก่อน");
+    document.querySelector("#start-name")?.focus();
+    return false;
+  }
+  ui.name = name;
   localStorage.setItem("gotfive.name", ui.name);
   localStorage.setItem("gotfive.color", ui.color);
   localStorage.setItem("gotfive.avatar", ui.avatar);
+  return true;
 }
 
 function syncIdentityFromState(state) {
