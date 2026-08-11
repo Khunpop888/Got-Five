@@ -19,6 +19,7 @@ const FALLBACK_COLORS = [
   { key: "zinc", name: "Zinc", hex: "#3f3f46" },
 ];
 const SAVED_PLAYER_NAME = localStorage.getItem("gotfive.name") || "";
+const SAVED_OWNER_KEY = sessionStorage.getItem("gotfive.ownerKey") || "";
 
 const ui = {
   connected: false,
@@ -28,6 +29,7 @@ const ui = {
   validatingRoom: false,
   state: null,
   name: SAVED_PLAYER_NAME === "Pop" ? "" : SAVED_PLAYER_NAME,
+  ownerKey: SAVED_OWNER_KEY,
   color: localStorage.getItem("gotfive.color") || "cyan",
   avatar: localStorage.getItem("gotfive.avatar") || "",
   maxPlayers: 4,
@@ -222,6 +224,14 @@ function renderStart() {
                 ${palette.map((color) => renderSwatch(color, ui.color)).join("")}
               </div>
             </div>
+            <div class="owner-lock-note">
+              <strong>สร้างห้องได้เฉพาะเจ้าของเว็บ</strong>
+              <span>เพื่อนที่ได้รับเชิญไม่ต้องใส่ช่องนี้ ให้เข้าจากลิงก์หรือรหัสห้องด้านล่าง</span>
+            </div>
+            <label class="field">
+              <span>รหัสเจ้าของเว็บ</span>
+              <input id="owner-key" class="input" type="password" autocomplete="off" value="${escapeHtml(ui.ownerKey)}" placeholder="ใส่รหัสสำหรับสร้างห้อง">
+            </label>
             <label class="field">
               <span>จำนวนผู้เล่นสูงสุด</span>
               <select id="max-players" class="select">
@@ -235,7 +245,7 @@ function renderStart() {
               </select>
             </label>
             <div class="button-row start-actions">
-              <button id="create-room" class="btn primary">สร้างห้องใหม่</button>
+              <button id="create-room" class="btn primary">สร้างห้องเชิญเพื่อน</button>
               <a class="btn ghost" href="/how-to-play.html" target="_blank" rel="noopener">วิธีเล่น</a>
             </div>
             <div class="field">
@@ -370,20 +380,6 @@ function renderGame() {
             ${opponents.length ? opponents.map((player) => renderSeat(player, false)).join("") : `<div class="empty-state">ยังไม่มีคู่แข่ง</div>`}
           </div>
 
-          <section class="tool-panel ${isMyTurn ? "is-my-turn-panel" : ""}">
-            <div class="tool-head">
-              <h2>โต๊ะกลาง</h2>
-              <span class="status-pill">${escapeHtml(statusText)}</span>
-            </div>
-            <div class="turn-banner">
-              <div>
-                <strong>${isMyTurn ? "ถึงตาคุณแล้ว" : statusText}</strong>
-                <span class="helper">${me?.active ? actionHint(canDraw, canAction) : "คุณอยู่ในโหมดผู้ชม"}</span>
-              </div>
-              ${ui.compareMode ? `<button id="cancel-compare" class="btn ghost">ยกเลิก Compare</button>` : ""}
-            </div>
-          </section>
-
           <section class="tool-panel ${canDraw ? "is-active-step" : ""}">
             <div class="tool-head">
               <h2>Step 1: จั่วไทล์</h2>
@@ -402,7 +398,10 @@ function renderGame() {
           <section class="tool-panel ${canAction ? "is-active-step" : ""}">
             <div class="tool-head">
               <h2>Step 2: ขอคำใบ้</h2>
-              <span class="status-pill">${canAction ? "เลือกไทล์กลาง" : "รอหลังจั่ว"}</span>
+              <div class="tool-actions">
+                <span class="status-pill">${canAction ? "เลือกไทล์กลาง" : "รอหลังจั่ว"}</span>
+                ${ui.compareMode ? `<button id="cancel-compare" class="btn ghost compact-btn">ยกเลิก Compare</button>` : ""}
+              </div>
             </div>
             <div class="center-tiles">
               ${s.center.length ? s.center.map((tile) => tileHtml(tile, {
@@ -883,18 +882,30 @@ function renderPodium(standings) {
   const top = [1, 2, 3, 4].map((rank) => standings.find((entry) => Number(entry.seriesRank || entry.rank) === rank)).filter(Boolean);
   if (!top.length) return "";
   return `
-    <section class="podium-stage">
-      ${top.map((entry) => `
-        <article class="podium-place place-${entry.seriesRank || entry.rank}" data-player-color="${escapeHtml(entry.color || "slate")}">
+    <section class="podium-stage grand-awards">
+      <div class="award-title">
+        <span>Final Awards Ceremony</span>
+        <strong>GOT FIVE! Champions</strong>
+        <small>จัดอันดับจากชัยชนะ คะแนนรวม และผลงานทุกเกม</small>
+      </div>
+      ${top.map((entry) => {
+        const rank = Number(entry.seriesRank || entry.rank);
+        const honor = rank === 1 ? "แชมป์ประจำโต๊ะ" : rank === 2 ? "รองแชมป์" : rank === 3 ? "อันดับสาม" : "อันดับสี่";
+        return `
+        <article class="podium-place place-${rank}" data-player-color="${escapeHtml(entry.color || "slate")}">
+          <span class="award-rank-label">${honor}</span>
           <div class="podium-character">
             ${avatarHtml(entry, "podium-avatar")}
-            <span class="medal medal-${entry.seriesRank || entry.rank}">${medalLabel(entry.seriesRank || entry.rank)}</span>
+            <span class="medal medal-${rank}">${medalLabel(rank)}</span>
           </div>
-          <strong>${escapeHtml(entry.name)}</strong>
-          <span>${entry.wins || 0} ชนะ · ${entry.points || 0} แต้ม</span>
-          <b>${entry.seriesRank || entry.rank}</b>
+          <strong class="podium-name">${escapeHtml(entry.name)}</strong>
+          <div class="podium-stats">
+            <span><b>${entry.wins || 0}</b> ชนะ</span>
+            <span><b>${entry.points || 0}</b> แต้ม</span>
+          </div>
+          <span class="podium-rank-number">${rank}</span>
         </article>
-      `).join("")}
+      `; }).join("")}
     </section>
   `;
 }
@@ -1178,6 +1189,10 @@ function bindStart() {
     ui.matchTotal = Number(event.target.value);
     localStorage.setItem("gotfive.matchTotal", ui.matchTotal);
   });
+  bind("#owner-key", "input", (event) => {
+    ui.ownerKey = event.target.value.trim();
+    sessionStorage.setItem("gotfive.ownerKey", ui.ownerKey);
+  });
   bindAll(".swatch", "click", (event) => {
     ui.color = event.currentTarget.dataset.color;
     localStorage.setItem("gotfive.color", ui.color);
@@ -1185,8 +1200,10 @@ function bindStart() {
   });
   bind("#create-room", "click", () => {
     if (!saveIdentityFromStart()) return;
+    ui.ownerKey = (document.querySelector("#owner-key")?.value || ui.ownerKey).trim();
+    sessionStorage.setItem("gotfive.ownerKey", ui.ownerKey);
     ui.pendingAvatarSync = Boolean(ui.avatar);
-    send("createRoom", { name: ui.name, color: ui.color, maxPlayers: ui.maxPlayers, matchTotal: ui.matchTotal });
+    send("createRoom", { name: ui.name, color: ui.color, maxPlayers: ui.maxPlayers, matchTotal: ui.matchTotal, ownerKey: ui.ownerKey });
   });
   bind("#join-room", "click", () => {
     if (!saveIdentityFromStart()) return;

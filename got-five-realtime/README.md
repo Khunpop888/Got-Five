@@ -104,6 +104,18 @@ Prototype นี้ใช้ native WebSocket เพื่อให้รัน�
 
 โค้ดชุดนี้พร้อมรันบนบริการที่รองรับ Python HTTP server + WebSocket แล้ว เพราะ `server.py` อ่านค่า `PORT` จาก environment และ bind เป็น `0.0.0.0` อัตโนมัติเมื่ออยู่บน hosting
 
+### ล็อกการสร้างห้องให้เจ้าของเว็บเท่านั้น
+
+เพื่อไม่ให้คนอื่นเข้าหน้าเว็บแล้วสร้างห้องเล่นเอง ให้ตั้ง Environment Variable บน Render:
+
+```text
+GOT_FIVE_OWNER_KEY=ตั้งรหัสลับของคุณเอง
+```
+
+หลังตั้งค่าแล้ว เฉพาะคนที่รู้รหัสนี้เท่านั้นถึงจะกดสร้างห้องได้ เพื่อนที่ได้รับเชิญยังเข้าห้องจาก invite link หรือรหัสห้องได้ตามปกติ และถ้าเกมเริ่มแล้วผู้เล่นใหม่จะเข้าไม่ได้
+
+บน Render ให้ไปที่ `Environment` > `Add Environment Variable` แล้วเพิ่ม `GOT_FIVE_OWNER_KEY` จากนั้นกด deploy ใหม่
+
 ### Replit
 
 1. สร้าง Python Repl ใหม่หรือ import โฟลเดอร์นี้เข้า Replit

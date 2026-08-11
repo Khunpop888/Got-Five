@@ -239,26 +239,196 @@ p {
 }
 
 .mini-board {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  gap: 10px;
   overflow: hidden;
-  border: 4px solid #ecf3fb;
-  border-radius: 12px;
-  box-shadow: 0 8px 0 rgba(15, 23, 42, 0.12);
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.28), transparent 28%),
+    radial-gradient(circle at 92% 18%, rgba(250, 204, 21, 0.24), transparent 30%),
+    linear-gradient(145deg, rgba(8, 13, 31, 0.96), rgba(20, 26, 51, 0.94));
+  box-shadow:
+    0 16px 0 rgba(15, 23, 42, 0.16),
+    0 34px 70px rgba(2, 6, 23, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
+  perspective: 900px;
+}
+
+.mini-board::before {
+  content: "TILE MATRIX";
+  justify-self: start;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  color: #e0f2fe;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  font-weight: 1000;
+  letter-spacing: 0;
+  box-shadow: 0 0 22px rgba(34, 211, 238, 0.18);
 }
 
 .mini-board .row {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: minmax(48px, 0.72fr) repeat(6, minmax(44px, 1fr));
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.03)),
+    rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
-.mini-board span {
-  min-height: 62px;
+.mini-board .row::before {
+  min-height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 1000;
+  text-transform: uppercase;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 0 20px rgba(255, 255, 255, 0.08);
+}
+
+.mini-board .row.green::before { content: "Green"; }
+.mini-board .row.pink::before { content: "Pink"; }
+.mini-board .row.blue::before { content: "Blue"; }
+.mini-board .row.red::before { content: "Red"; }
+.mini-board .row.orange::before { content: "Orange"; }
+
+.mini-board .row.green::before,
+.mini-board .row.green > span {
+  --tile-demo-bg: linear-gradient(145deg, #4ade80, #059669 48%, #047842);
+  --tile-demo-shadow: #045f36;
+}
+
+.mini-board .row.pink::before,
+.mini-board .row.pink > span {
+  --tile-demo-bg: linear-gradient(145deg, #f472b6, #db2777 46%, #9d1457);
+  --tile-demo-shadow: #7f123f;
+}
+
+.mini-board .row.blue::before,
+.mini-board .row.blue > span {
+  --tile-demo-bg: linear-gradient(145deg, #60a5fa, #2563eb 48%, #173a9d);
+  --tile-demo-shadow: #12307f;
+}
+
+.mini-board .row.red::before,
+.mini-board .row.red > span {
+  --tile-demo-bg: linear-gradient(145deg, #fb7185, #dc2626 48%, #991b1b);
+  --tile-demo-shadow: #7f1d1d;
+}
+
+.mini-board .row.orange::before,
+.mini-board .row.orange > span {
+  --tile-demo-bg: linear-gradient(145deg, #fb923c, #ea580c 48%, #9a3412);
+  --tile-demo-shadow: #7c2d12;
+}
+
+.mini-board .row::before,
+.mini-board .row > span {
+  background:
+    radial-gradient(circle at 24% 12%, rgba(255, 255, 255, 0.68), transparent 25%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.24), transparent 36%, rgba(0, 0, 0, 0.32)),
+    var(--tile-demo-bg);
+}
+
+.mini-board .row > span {
+  position: relative;
+  min-height: 68px;
   display: grid;
   place-items: center;
   color: #fff;
-  font-size: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 25px;
   font-weight: 1000;
-  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.32);
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.32),
+    0 0 14px rgba(255, 255, 255, 0.26);
+  transform: translateZ(0);
+  box-shadow:
+    0 7px 0 var(--tile-demo-shadow, #111827),
+    0 16px 22px rgba(2, 6, 23, 0.32),
+    inset 0 2px 0 rgba(255, 255, 255, 0.64),
+    inset 0 -12px 18px rgba(0, 0, 0, 0.22);
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+}
+
+.mini-board .row > span::before {
+  content: "";
+  position: absolute;
+  inset: -40% -62%;
+  background: linear-gradient(115deg, transparent 32%, rgba(255, 255, 255, 0.62) 46%, transparent 60%);
+  opacity: 0;
+  transform: translateX(-74%) skewX(-18deg);
+  pointer-events: none;
+}
+
+.mini-board .row > span::after {
+  content: "";
+  position: absolute;
+  inset: 7px 8px auto;
+  height: 24%;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.38), transparent);
+  pointer-events: none;
+}
+
+.mini-board .row > span:hover {
+  z-index: 2;
+  filter: saturate(1.14) brightness(1.06);
+  transform: translateY(-4px) rotateX(8deg);
+  box-shadow:
+    0 9px 0 rgba(15, 23, 42, 0.38),
+    0 22px 30px rgba(2, 6, 23, 0.38),
+    0 0 24px rgba(255, 255, 255, 0.18),
+    inset 0 2px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -12px 18px rgba(0, 0, 0, 0.22);
+}
+
+.mini-board .row > span:hover::before {
+  animation: shineSweep 780ms ease-out;
+}
+
+@keyframes shineSweep {
+  from {
+    opacity: 0;
+    transform: translateX(-74%) skewX(-18deg);
+  }
+
+  38% {
+    opacity: 0.9;
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(74%) skewX(-18deg);
+  }
+}
+
+.mini-board .row > span .dots {
+  display: block;
+  min-height: 0;
+  margin-top: 3px;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 15px;
+  letter-spacing: 2px;
+  line-height: 1;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.24);
 }
 
 .dots {
@@ -457,9 +627,37 @@ p {
     height: 38px;
   }
 
-  .mini-board span {
-    min-height: 48px;
-    font-size: 19px;
+  .mini-board {
+    gap: 7px;
+    padding: 10px;
+    overflow-x: auto;
+  }
+
+  .mini-board .row {
+    min-width: 430px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .mini-board .row::before {
+    display: none;
+  }
+
+  .mini-board .row > span {
+    min-height: 54px;
+    border-radius: 10px;
+    font-size: 20px;
+    box-shadow:
+      0 5px 0 var(--tile-demo-shadow, #111827),
+      0 11px 16px rgba(2, 6, 23, 0.28),
+      inset 0 2px 0 rgba(255, 255, 255, 0.62),
+      inset 0 -9px 14px rgba(0, 0, 0, 0.2);
+  }
+
+  .mini-board .row > span .dots {
+    font-size: 12px;
+    letter-spacing: 1px;
   }
 
   .rack {

@@ -23,6 +23,7 @@ ROOT_DIR = Path(__file__).resolve().parent
 PUBLIC_DIR = ROOT_DIR / "public"
 HOST = os.environ.get("GOT_FIVE_HOST") or ("0.0.0.0" if os.environ.get("PORT") else "127.0.0.1")
 PORT = int(os.environ.get("GOT_FIVE_PORT") or os.environ.get("PORT") or "8787")
+OWNER_KEY = os.environ.get("GOT_FIVE_OWNER_KEY", "").strip()
 WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 MAX_AVATAR_BYTES = 256 * 1024
 MAX_WS_MESSAGE_BYTES = 1024 * 1024
@@ -217,6 +218,16 @@ def safe_int(value: Any, default: int) -> int:
 
 def sanitize_match_total(value: Any) -> int:
     return min(5, max(1, safe_int(value, 1)))
+
+
+def require_owner_key(data: dict[str, Any]) -> None:
+    if not OWNER_KEY:
+        if not os.environ.get("PORT"):
+            return
+        raise GameError("ยังไม่ได้ตั้งรหัสเจ้าของเว็บใน Render: GOT_FIVE_OWNER_KEY")
+    provided = str(data.get("ownerKey") or "").strip()
+    if not provided or not secrets.compare_digest(provided, OWNER_KEY):
+        raise GameError("สร้างห้องได้เฉพาะเจ้าของเว็บเท่านั้น กรุณาใส่รหัสเจ้าของให้ถูกต้อง")
 
 
 def make_room_code() -> str:
@@ -1186,6 +1197,7 @@ def leave_current_room(client: Client) -> None:
 
 
 def handle_create_room(client: Client, data: dict[str, Any]) -> None:
+    require_owner_key(data)
     leave_current_room(client)
     max_players = int(data.get("maxPlayers") or 4)
     max_players = min(4, max(2, max_players))

@@ -290,21 +290,21 @@ json.decoder.JSONDecodeError: Unterminated string
 json.decoder.JSONDecodeError: Expecting value
 ```
 
-ให้ใช้ไฟล์ล่าสุดที่มี `server_fixed.py` แล้วตั้งค่า Render แบบนี้:
+ให้ใช้ไฟล์ล่าสุดที่รวม fix WebSocket ไว้ใน `server.py` แล้วตั้งค่า Render แบบนี้:
 
 ถ้า Render ใช้ Root Directory เป็น `got-five-realtime`:
 
 ```text
-python server_fixed.py
+python server.py
 ```
 
 ถ้า Render ไม่ได้ตั้ง Root Directory และไฟล์อยู่ในโฟลเดอร์ `got-five-realtime/`:
 
 ```text
-python got-five-realtime/server_fixed.py
+python got-five-realtime/server.py
 ```
 
-สาเหตุคือ hosting/proxy อาจแยก WebSocket message ที่มีรูปโปรไฟล์ base64 ออกเป็นหลาย frame ทำให้ `server.py` เวอร์ชันเก่าอ่าน JSON ได้ไม่ครบ ส่วน `server_fixed.py` จะรวม frame ให้ครบก่อนประมวลผล
+สาเหตุคือ hosting/proxy อาจแยก WebSocket message ที่มีรูปโปรไฟล์ base64 ออกเป็นหลาย frame ทำให้ `server.py` เวอร์ชันเก่าอ่าน JSON ได้ไม่ครบ ตอนนี้ fix ถูกใส่ไว้ใน `server.py` แล้ว ให้รันไฟล์นี้เป็นไฟล์หลัก
 
 ถ้าห้องหาย:
 
@@ -319,3 +319,22 @@ python got-five-realtime/server_fixed.py
 - Render WebSockets: https://render.com/docs/websocket
 - Cloudflare Tunnel: https://developers.cloudflare.com/tunnel/
 - Cloudflare Quick Tunnel: https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/
+
+## Private Owner-Only Room Creation
+
+ถ้าต้องการให้เว็บนี้เล่นได้เฉพาะห้องที่คุณสร้างและเชิญเท่านั้น ให้ตั้งค่า Environment Variable บน Render:
+
+```text
+GOT_FIVE_OWNER_KEY=ตั้งรหัสลับของคุณเอง
+```
+
+วิธีตั้งใน Render:
+
+1. เข้า service `Got-Five`
+2. ไปที่เมนู `Environment`
+3. กด `Add Environment Variable`
+4. ใส่ Key เป็น `GOT_FIVE_OWNER_KEY`
+5. ใส่ Value เป็นรหัสลับที่คุณจำได้
+6. กด Save แล้ว deploy ใหม่
+
+หลังจากนี้หน้าเว็บยังเปิดได้ แต่คนทั่วไปจะสร้างห้องเองไม่ได้ ต้องเข้าจาก invite link หรือรหัสห้องที่คุณสร้างไว้เท่านั้น
