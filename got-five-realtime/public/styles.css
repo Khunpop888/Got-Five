@@ -2744,14 +2744,14 @@ button {
     height: auto;
     grid-template-columns: minmax(0, 65fr) minmax(520px, 35fr);
     gap: 8px;
-    align-items: start;
+    align-items: stretch;
     overflow: visible;
   }
 
   .table-zone {
-    height: auto;
+    height: 100%;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto minmax(132px, auto) minmax(0, auto);
+    grid-template-rows: auto minmax(132px, auto) minmax(220px, 1fr);
     grid-template-areas:
       "opponents opponents"
       "draw clue"
@@ -2777,6 +2777,7 @@ button {
     grid-area: rack;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
+    min-height: 220px;
   }
 
   .table-zone > .tool-panel {
@@ -2834,18 +2835,24 @@ button {
     grid-template-columns: repeat(11, minmax(0, 1fr));
     gap: 6px;
     padding: 12px;
+    min-height: 132px;
+    box-shadow:
+      0 14px 0 rgba(109, 67, 25, 0.32),
+      0 20px 28px rgba(15, 23, 42, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.48),
+      inset 0 -18px 24px rgba(102, 57, 18, 0.18);
   }
 
   .rack-track.mine .notch {
     width: 100%;
     min-width: 0;
-    min-height: 78px;
+    min-height: 96px;
   }
 
   .rack-track.mine .tile-holder {
     width: 100%;
     min-width: 0;
-    min-height: 86px;
+    min-height: 104px;
     display: grid;
     align-items: end;
     justify-items: center;

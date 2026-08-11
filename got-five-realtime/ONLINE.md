@@ -39,7 +39,7 @@
 6. กด Run
 7. ถ้า preview เปิดได้ ให้กด Publish/Deploy
 8. Replit จะให้ public URL เอา URL นั้นส่งให้เพื่อน
-9. เจ้าของเว็บเปิด URL แบบ `/?owner=1` แล้วสร้างห้อง จากนั้นกด Copy Invite ส่ง invite link ให้เพื่อน
+9. เจ้าของเว็บเปิด URL แบบ `/owner` แล้วสร้างห้อง จากนั้นกด Copy Invite ส่ง invite link ให้เพื่อน
 
 ค่าที่ต้องตั้ง:
 
@@ -124,7 +124,7 @@ Health Check Path:
 6. กด Create Web Service
 7. รอจนสถานะขึ้น Live
 8. Render จะให้ URL ประมาณ `https://got-five-realtime.onrender.com`
-9. เจ้าของเว็บเปิด URL นั้นแบบเติม `/?owner=1` เช่น `https://got-five-realtime.onrender.com/?owner=1`
+9. เจ้าของเว็บเปิด URL นั้นแบบเติม `/owner` เช่น `https://got-five-realtime.onrender.com/owner`
 10. ใส่รหัสใช้งาน ตั้งรหัสห้อง แล้วกด Copy Invite ส่งให้เพื่อน
 
 โค้ดนี้รองรับ Render แล้ว เพราะ `server.py` อ่านค่า `PORT` จากระบบ และ bind เป็น `0.0.0.0` เมื่ออยู่บน hosting
@@ -157,7 +157,7 @@ cloudflared tunnel --url http://127.0.0.1:8787
 ```
 
 5. Cloudflare จะให้ URL แบบ `https://xxxxx.trycloudflare.com`
-6. เจ้าของเว็บเปิด URL นั้นแบบเติม `/?owner=1` แล้วสร้างห้อง
+6. เจ้าของเว็บเปิด URL นั้นแบบเติม `/owner` แล้วสร้างห้อง
 7. ส่ง invite link ให้เพื่อน
 
 ### แบบถาวรด้วยโดเมนตัวเอง
@@ -179,7 +179,7 @@ http://localhost:8787
 
 ## วิธีส่งให้เพื่อนเล่น
 
-1. เจ้าของเว็บเปิด public URL ของเกมแบบเติม `/?owner=1`
+1. เจ้าของเว็บเปิด public URL ของเกมแบบเติม `/owner`
 2. ใส่ชื่อ เลือกสี ใส่รูปโปรไฟล์
 3. ใส่รหัสใช้งาน แล้วตั้งรหัสห้องเองได้ เช่น `ไส้ตัน` หรือ `enjoy`
 4. กดสร้างห้อง
@@ -342,7 +342,7 @@ GOT_FIVE_OWNER_KEY=ตั้งรหัสลับของคุณเอง
 หลังจากนี้หน้าเว็บปกติยังเปิดได้ แต่คนทั่วไปจะเห็นหน้าเข้าห้อง ไม่เห็นเครื่องมือสร้างห้อง ถ้าคุณจะสร้างห้องเองให้เปิด URL แบบนี้:
 
 ```text
-https://got-five-6v45.onrender.com/?owner=1
+https://got-five-6v45.onrender.com/owner
 ```
 
 จากนั้นใส่รหัสใช้งานที่ตั้งไว้ใน `GOT_FIVE_OWNER_KEY` และตั้งรหัสห้องเองได้ เช่น `ไส้ตัน` หรือ `enjoy` เพื่อนต้องเข้าจาก invite link หรือรหัสห้องที่คุณสร้างไว้เท่านั้น

@@ -21,7 +21,7 @@ const FALLBACK_COLORS = [
 const SAVED_PLAYER_NAME = localStorage.getItem("gotfive.name") || "";
 const SAVED_OWNER_KEY = sessionStorage.getItem("gotfive.ownerKey") || "";
 const START_PARAMS = new URLSearchParams(location.search);
-const START_OWNER_MODE = START_PARAMS.get("owner") === "1" || sessionStorage.getItem("gotfive.ownerMode") === "1" || Boolean(SAVED_OWNER_KEY);
+const START_OWNER_MODE = location.pathname === "/owner" || START_PARAMS.get("owner") === "1" || sessionStorage.getItem("gotfive.ownerMode") === "1" || Boolean(SAVED_OWNER_KEY);
 
 const ui = {
   connected: false,

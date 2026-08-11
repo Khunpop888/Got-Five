@@ -628,16 +628,17 @@ p {
   }
 
   .mini-board {
-    gap: 7px;
-    padding: 10px;
-    overflow-x: auto;
+    gap: 6px;
+    padding: 8px;
+    overflow: hidden;
   }
 
   .mini-board .row {
-    min-width: 430px;
+    width: 100%;
+    min-width: 0;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 6px;
-    padding: 6px;
+    gap: clamp(3px, 1.1vw, 5px);
+    padding: 5px;
   }
 
   .mini-board .row::before {
@@ -645,19 +646,22 @@ p {
   }
 
   .mini-board .row > span {
-    min-height: 54px;
-    border-radius: 10px;
-    font-size: 20px;
+    min-width: 0;
+    min-height: clamp(43px, 12.5vw, 54px);
+    border-width: 1px;
+    border-radius: 9px;
+    font-size: clamp(16px, 5vw, 20px);
     box-shadow:
-      0 5px 0 var(--tile-demo-shadow, #111827),
-      0 11px 16px rgba(2, 6, 23, 0.28),
+      0 4px 0 var(--tile-demo-shadow, #111827),
+      0 9px 14px rgba(2, 6, 23, 0.25),
       inset 0 2px 0 rgba(255, 255, 255, 0.62),
       inset 0 -9px 14px rgba(0, 0, 0, 0.2);
   }
 
   .mini-board .row > span .dots {
-    font-size: 12px;
-    letter-spacing: 1px;
+    margin-top: 1px;
+    font-size: clamp(10px, 3.2vw, 12px);
+    letter-spacing: 0;
   }
 
   .rack {

@@ -1600,7 +1600,7 @@ class GotFiveHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def serve_static(self, request_path: str) -> None:
-        if request_path == "/" or request_path.startswith("/room/"):
+        if request_path in {"/", "/owner"} or request_path.startswith("/room/"):
             file_path = PUBLIC_DIR / "index.html"
         else:
             relative = urllib.parse.unquote(request_path.lstrip("/"))
