@@ -487,14 +487,8 @@ function renderActionControls(canAction) {
   }
   const disabled = !canAction || !ui.selectedCenterTileId || !ui.responderId;
   return `
-    <div class="action-grid" style="margin-top: 12px;">
-      <label class="field responder-field">
-        <span>คนตอบคำใบ้</span>
-        <select id="responder" class="select" ${canAction ? "" : "disabled"}>
-          ${responders.map((player) => `<option value="${escapeHtml(player.id)}" ${player.id === ui.responderId ? "selected" : ""}>${escapeHtml(player.name)}</option>`).join("")}
-        </select>
-      </label>
-      <div class="action-buttons">
+    <div class="action-grid clue-action-grid">
+      <div class="action-buttons clue-action-buttons">
         <button id="do-categorise" class="btn violet" ${disabled ? "disabled" : ""}>Categorise</button>
         <button id="start-compare" class="btn rose" ${disabled ? "disabled" : ""}>Compare</button>
       </div>
@@ -1342,7 +1336,7 @@ function sendClueAction(type, slotIndex = null) {
     return;
   }
   if (!ui.responderId) {
-    showToast("เลือกคนตอบคำใบ้ก่อน");
+    showToast("ยังไม่มีคู่แข่งให้ขอคำใบ้");
     return;
   }
   const payload = {
