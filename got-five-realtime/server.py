@@ -595,7 +595,7 @@ def apply_compare(room: Room, player: Player, responder_id: Any, center_tile_id:
     return {"tile": tile_public(tile), "responderId": responder.id, "slotIndex": slot, "isSame": is_same}
 
 
-def apply_mark(player: Player, number: Any, marked: Any) -> None:
+def apply_mark(player: Player, number: Any, marked: Any) -> int:
     try:
         num = int(number)
     except (TypeError, ValueError):
@@ -607,6 +607,7 @@ def apply_mark(player: Player, number: Any, marked: Any) -> None:
     else:
         player.marks.discard(num)
     player.stats["boardMarks"] = len(player.marks)
+    return num
 
 
 def final_rankings(room: Room) -> list[dict[str, Any]]:
@@ -1408,9 +1409,15 @@ def handle_action(client: Client, data: dict[str, Any]) -> None:
 def handle_mark(client: Client, data: dict[str, Any]) -> None:
     room = require_room(client)
     player = require_player(room, client)
-    apply_mark(player, data.get("num"), data.get("marked"))
-    room.revision += 1
-    client.send("state", serialize_room(room, player.id))
+    num = apply_mark(player, data.get("num"), data.get("marked"))
+    client.send(
+        "markUpdated",
+        {
+            "num": num,
+            "marked": num in player.marks,
+            "count": len(player.marks),
+        },
+    )
 
 
 def handle_chat(client: Client, data: dict[str, Any]) -> None:
@@ -1498,6 +1505,8 @@ def handle_message(client: Client, message: str) -> None:
                 handle_chat(client, data)
             elif event == "gotFive":
                 handle_guess(client, data)
+            elif event == "ping":
+                client.send("pong", {"time": now_ms()})
             elif event == "sync":
                 room = require_room(client)
                 client.send("state", serialize_room(room, client.player_id))

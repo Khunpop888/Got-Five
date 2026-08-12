@@ -79,8 +79,16 @@ function connect() {
     } catch {
       return;
     }
-    if (packet.event === "connected") return;
+    if (packet.event === "connected" || packet.event === "pong") return;
+    if (packet.event === "markUpdated") {
+      applyMarkUpdate(packet.data);
+      return;
+    }
     if (packet.event === "roomJoined" || packet.event === "state" || packet.event === "chat") {
+      const isRedundantSync = packet.event === "state"
+        && !packet.data?.eventData
+        && ui.state?.room?.revision === packet.data?.room?.revision;
+      if (isRedundantSync) return;
       ui.validatingRoom = false;
       ui.state = packet.data;
       const chatLength = packet.data?.chat?.length || 0;
@@ -126,15 +134,16 @@ function connect() {
 function send(event, data = {}) {
   if (!ui.socket || ui.socket.readyState !== WebSocket.OPEN) {
     showToast("ยังไม่ได้เชื่อมต่อ server");
-    return;
+    return false;
   }
   ui.socket.send(JSON.stringify({ event, data }));
+  return true;
 }
 
 function sendHeartbeat() {
   if (!ui.connected || ui.validatingRoom || !ui.state?.room?.code) return;
   if (!ui.socket || ui.socket.readyState !== WebSocket.OPEN) return;
-  ui.socket.send(JSON.stringify({ event: "sync", data: {} }));
+  ui.socket.send(JSON.stringify({ event: "ping", data: {} }));
 }
 
 function handleServerError(message) {
@@ -588,7 +597,7 @@ function renderBoard() {
       const num = row + 1 + col * 5;
       const dots = (col % 3) + 1;
       cells += `
-        <button class="board-cell tile-${row} ${marked.has(num) ? "is-marked" : ""}" data-mark="${num}" aria-label="mark ${num}">
+        <button class="board-cell tile-${row} ${marked.has(num) ? "is-marked" : ""}" data-mark="${num}" aria-label="${marked.has(num) ? "คืนเลข" : "ตัดเลข"} ${num}" aria-pressed="${marked.has(num)}">
           <strong>${num}</strong>
           ${dotsHtml(dots)}
         </button>
@@ -600,7 +609,7 @@ function renderBoard() {
     <section class="tool-panel">
       <div class="tool-head">
         <h2>Private Board</h2>
-        <span class="status-pill">${marked.size}/60</span>
+        <span id="board-mark-count" class="status-pill">ตัดแล้ว ${marked.size}/60</span>
       </div>
       <div class="board-grid">${rows}</div>
     </section>
@@ -1304,7 +1313,9 @@ function bindGame() {
   bindAll("[data-mark]", "click", (event) => {
     const num = Number(event.currentTarget.dataset.mark);
     const marked = !event.currentTarget.classList.contains("is-marked");
-    send("mark", { num, marked });
+    if (send("mark", { num, marked })) {
+      setBoardMark(num, marked);
+    }
   });
   bindAll("[data-note-slot]", "input", (event) => {
     setNote(Number(event.target.dataset.noteSlot), event.target.value);
@@ -1530,7 +1541,8 @@ function roomStorageKey(code) {
 function notesKey() {
   const code = ui.state?.room?.code || "draft";
   const me = ui.state?.me?.id || "me";
-  return `gotfive.notes.${code}.${me}`;
+  const match = ui.state?.room?.startedAt || `match-${ui.state?.room?.matchIndex || 1}`;
+  return `gotfive.notes.${roomStorageKey(code)}.${me}.${match}`;
 }
 
 function getNotes() {
@@ -1549,6 +1561,35 @@ function setNote(slot, value) {
   const notes = getNotes();
   notes[slot] = value.replace(/[^\d]/g, "").slice(0, 2);
   localStorage.setItem(notesKey(), JSON.stringify(notes));
+}
+
+function applyMarkUpdate(data) {
+  const num = Number(data?.num);
+  if (!Number.isInteger(num) || num < 1 || num > 60) return;
+  setBoardMark(num, Boolean(data.marked), Number(data.count));
+}
+
+function setBoardMark(num, marked, confirmedCount = null) {
+  if (!ui.state) return;
+  const marks = new Set(ui.state.marks || []);
+  if (marked) {
+    marks.add(num);
+  } else {
+    marks.delete(num);
+  }
+  ui.state.marks = Array.from(marks).sort((left, right) => left - right);
+
+  const cell = app.querySelector(`[data-mark="${num}"]`);
+  if (cell) {
+    cell.classList.toggle("is-marked", marked);
+    cell.setAttribute("aria-pressed", String(marked));
+    cell.setAttribute("aria-label", `${marked ? "คืนเลข" : "ตัดเลข"} ${num}`);
+  }
+  const counter = app.querySelector("#board-mark-count");
+  if (counter) {
+    const count = Number.isInteger(confirmedCount) ? confirmedCount : marks.size;
+    counter.textContent = `ตัดแล้ว ${count}/60`;
+  }
 }
 
 function reconcileLocalSelection() {

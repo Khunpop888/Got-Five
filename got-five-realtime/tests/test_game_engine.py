@@ -192,6 +192,52 @@ class GameEngineTests(unittest.TestCase):
         alice_public = next(player for player in view["players"] if player["id"] == alice.id)
         self.assertEqual(alice_public["stats"]["avgTurnSec"], 7)
 
+    def test_private_board_mark_sends_compact_ack_without_full_room_state(self):
+        room, alice, _bob = self.make_room()
+
+        class FakeClient:
+            def __init__(self):
+                self.room_code = server.room_lookup_key(room.code)
+                self.player_id = alice.id
+                self.sent = []
+
+            def send(self, event, data):
+                self.sent.append((event, data))
+
+        client = FakeClient()
+        with server.ROOMS_LOCK:
+            server.ROOMS[client.room_code] = room
+            try:
+                revision = room.revision
+                server.handle_mark(client, {"num": 17, "marked": True})
+
+                self.assertEqual(room.revision, revision)
+                self.assertEqual(alice.marks, {17})
+                self.assertEqual(client.sent, [("markUpdated", {"num": 17, "marked": True, "count": 1})])
+
+                server.handle_mark(client, {"num": 17, "marked": False})
+                self.assertEqual(alice.marks, set())
+                self.assertEqual(client.sent[-1], ("markUpdated", {"num": 17, "marked": False, "count": 0}))
+            finally:
+                server.ROOMS.pop(client.room_code, None)
+
+    def test_heartbeat_uses_compact_pong_without_room_state(self):
+        class FakeClient:
+            room_code = None
+            player_id = None
+
+            def __init__(self):
+                self.sent = []
+
+            def send(self, event, data):
+                self.sent.append((event, data))
+
+        client = FakeClient()
+        with patch("server.time.time", return_value=123.456):
+            server.handle_message(client, json.dumps({"event": "ping", "data": {}}))
+
+        self.assertEqual(client.sent, [("pong", {"time": 123456})])
+
     def test_owner_key_is_required_for_public_room_creation(self):
         with patch.object(server, "OWNER_KEY", "secret-owner-code"):
             with self.assertRaises(server.GameError):
