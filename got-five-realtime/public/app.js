@@ -20,6 +20,7 @@ const FALLBACK_COLORS = [
 ];
 const SAVED_PLAYER_NAME = localStorage.getItem("gotfive.name") || "";
 const SAVED_OWNER_KEY = sessionStorage.getItem("gotfive.ownerKey") || "";
+const SAVED_SOUND_ENABLED = localStorage.getItem("gotfive.soundEnabled") !== "false";
 const START_PARAMS = new URLSearchParams(location.search);
 const START_OWNER_MODE = location.pathname === "/owner" || START_PARAMS.get("owner") === "1" || sessionStorage.getItem("gotfive.ownerMode") === "1" || Boolean(SAVED_OWNER_KEY);
 
@@ -49,10 +50,304 @@ const ui = {
   chatOpen: false,
   chatReadCount: 0,
   lastEvent: null,
+  soundEnabled: SAVED_SOUND_ENABLED,
 };
 
 let pendingServerRender = null;
 
+const gameAudio = {
+  context: null,
+  master: null,
+  userActivated: false,
+};
+
+function setupSoundControls() {
+  updateSoundToggle();
+  document.querySelector("#sound-toggle")?.addEventListener("click", () => {
+    gameAudio.userActivated = true;
+    ui.soundEnabled = !ui.soundEnabled;
+    localStorage.setItem("gotfive.soundEnabled", String(ui.soundEnabled));
+    updateSoundToggle();
+    if (gameAudio.master && gameAudio.context) {
+      gameAudio.master.gain.cancelScheduledValues(gameAudio.context.currentTime);
+      gameAudio.master.gain.setTargetAtTime(ui.soundEnabled ? 0.72 : 0.0001, gameAudio.context.currentTime, 0.015);
+    }
+    if (ui.soundEnabled) playSound("confirm");
+  });
+  document.addEventListener("click", handleUiClickSound, true);
+  document.addEventListener("change", (event) => {
+    if (!event.target.closest("select")) return;
+    unlockAudio();
+    playSound("select");
+  }, true);
+}
+
+function updateSoundToggle() {
+  const button = document.querySelector("#sound-toggle");
+  if (!button) return;
+  button.classList.toggle("is-muted", !ui.soundEnabled);
+  button.setAttribute("aria-pressed", String(ui.soundEnabled));
+  button.setAttribute("aria-label", ui.soundEnabled ? "ปิดเสียงเกม" : "เปิดเสียงเกม");
+  const icon = button.querySelector(".sound-toggle-icon");
+  const label = button.querySelector(".sound-toggle-label");
+  if (icon) icon.textContent = ui.soundEnabled ? "🔊" : "🔇";
+  if (label) label.textContent = ui.soundEnabled ? "เสียง: เปิด" : "เสียง: ปิด";
+  document.documentElement.dataset.sound = ui.soundEnabled ? "on" : "off";
+}
+
+function handleUiClickSound(event) {
+  const control = event.target.closest("button, a.btn, [role='button']");
+  if (!control || control.disabled || control.getAttribute("aria-disabled") === "true") return;
+  unlockAudio();
+  if (control.id === "sound-toggle") return;
+  if (control.matches("[data-mark]")) {
+    playSound(control.classList.contains("is-marked") ? "markOff" : "markOn");
+    return;
+  }
+  if (control.id === "submit-guess") {
+    playSound("guessSubmit");
+    return;
+  }
+  if (control.id === "send-chat") {
+    playSound("messageSend");
+    return;
+  }
+  if (control.matches("[data-color], [data-center-tile], [data-secret-slot], [data-draw]")) {
+    playSound("select");
+    return;
+  }
+  if (control.matches("#cancel-guess, #cancel-categorise, [data-cancel-compare]")) {
+    playSound("cancel");
+    return;
+  }
+  if (control.matches("#open-guess, #do-categorise, #start-compare")) {
+    playSound("open");
+    return;
+  }
+  if (control.matches(".primary, .rose, #confirm-categorise")) {
+    playSound("confirm");
+    return;
+  }
+  playSound("click");
+}
+
+function unlockAudio() {
+  gameAudio.userActivated = true;
+  if (!ui.soundEnabled) return;
+  const context = ensureAudioContext();
+  if (!context) return;
+  if (context.state === "suspended") {
+    context.resume().then(() => {
+      document.documentElement.dataset.audioReady = "true";
+    }).catch(() => {});
+  } else {
+    document.documentElement.dataset.audioReady = "true";
+  }
+}
+
+function ensureAudioContext() {
+  if (gameAudio.context) return gameAudio.context;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  try {
+    const context = new AudioContextClass();
+    const master = context.createGain();
+    master.gain.value = ui.soundEnabled ? 0.72 : 0.0001;
+    master.connect(context.destination);
+    gameAudio.context = context;
+    gameAudio.master = master;
+    return context;
+  } catch {
+    return null;
+  }
+}
+
+function soundTone(context, frequency, offset, duration, options = {}) {
+  const start = context.currentTime + Math.max(0, offset);
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  oscillator.type = options.type || "sine";
+  oscillator.frequency.setValueAtTime(Math.max(30, frequency), start);
+  if (options.endFrequency) {
+    oscillator.frequency.exponentialRampToValueAtTime(Math.max(30, options.endFrequency), start + duration);
+  }
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(options.volume || 0.12, start + Math.min(0.025, duration * 0.3));
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  oscillator.connect(gain);
+  gain.connect(gameAudio.master);
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.02);
+}
+
+function soundNoise(context, offset, duration, options = {}) {
+  const frameCount = Math.max(1, Math.floor(context.sampleRate * duration));
+  const buffer = context.createBuffer(1, frameCount, context.sampleRate);
+  const channel = buffer.getChannelData(0);
+  for (let index = 0; index < frameCount; index += 1) {
+    channel[index] = (Math.random() * 2 - 1) * (1 - index / frameCount);
+  }
+  const source = context.createBufferSource();
+  const filter = context.createBiquadFilter();
+  const gain = context.createGain();
+  const start = context.currentTime + Math.max(0, offset);
+  source.buffer = buffer;
+  filter.type = options.filterType || "bandpass";
+  filter.frequency.value = options.frequency || 900;
+  filter.Q.value = options.q || 0.8;
+  gain.gain.setValueAtTime(options.volume || 0.045, start);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(gameAudio.master);
+  source.start(start);
+  source.stop(start + duration + 0.02);
+}
+
+function playSound(name, options = {}) {
+  if (!ui.soundEnabled || !gameAudio.userActivated) return;
+  const context = ensureAudioContext();
+  if (!context || !gameAudio.master) return;
+  if (context.state === "suspended") context.resume().catch(() => {});
+  const delay = Math.max(0, Number(options.delay || 0));
+  const tone = (frequency, offset, duration, config = {}) => soundTone(context, frequency, delay + offset, duration, config);
+  const noise = (offset, duration, config = {}) => soundNoise(context, delay + offset, duration, config);
+
+  if (name === "click") {
+    tone(520, 0, 0.045, { type: "triangle", endFrequency: 610, volume: 0.055 });
+  } else if (name === "select") {
+    tone(440, 0, 0.07, { type: "triangle", volume: 0.07 });
+    tone(660, 0.055, 0.08, { type: "sine", volume: 0.065 });
+  } else if (name === "open") {
+    tone(330, 0, 0.08, { type: "triangle", volume: 0.075 });
+    tone(495, 0.06, 0.11, { type: "triangle", volume: 0.08 });
+  } else if (name === "confirm") {
+    tone(523, 0, 0.075, { type: "triangle", volume: 0.08 });
+    tone(784, 0.065, 0.13, { type: "sine", volume: 0.085 });
+  } else if (name === "cancel") {
+    tone(410, 0, 0.08, { type: "triangle", volume: 0.07 });
+    tone(275, 0.055, 0.12, { type: "sine", volume: 0.07 });
+  } else if (name === "markOn") {
+    noise(0, 0.07, { frequency: 260, filterType: "lowpass", volume: 0.055 });
+    tone(150, 0, 0.09, { type: "square", endFrequency: 110, volume: 0.035 });
+  } else if (name === "markOff") {
+    tone(240, 0, 0.07, { type: "triangle", volume: 0.055 });
+    tone(380, 0.05, 0.09, { type: "sine", volume: 0.06 });
+  } else if (name === "draw") {
+    noise(0, 0.22, { frequency: 1250, volume: 0.05 });
+    tone(220, 0, 0.2, { type: "sawtooth", endFrequency: 660, volume: 0.045 });
+    tone(880, 0.18, 0.13, { type: "triangle", volume: 0.085 });
+  } else if (name === "categorise") {
+    tone(294, 0, 0.1, { type: "triangle", volume: 0.085 });
+    tone(440, 0.09, 0.1, { type: "triangle", volume: 0.085 });
+    tone(587, 0.18, 0.15, { type: "sine", volume: 0.09 });
+  } else if (name === "compareYes") {
+    tone(392, 0, 0.11, { type: "triangle", volume: 0.09 });
+    tone(587, 0.1, 0.14, { type: "triangle", volume: 0.1 });
+    tone(784, 0.2, 0.2, { type: "sine", volume: 0.085 });
+  } else if (name === "compareNo") {
+    tone(440, 0, 0.13, { type: "triangle", volume: 0.085 });
+    tone(294, 0.11, 0.18, { type: "sine", volume: 0.09 });
+  } else if (name === "myTurn") {
+    tone(659, 0, 0.16, { type: "sine", volume: 0.1 });
+    tone(784, 0.12, 0.18, { type: "sine", volume: 0.1 });
+    tone(988, 0.24, 0.28, { type: "sine", volume: 0.11 });
+  } else if (name === "stepReady") {
+    tone(523, 0, 0.09, { type: "triangle", volume: 0.08 });
+    tone(698, 0.075, 0.12, { type: "triangle", volume: 0.085 });
+  } else if (name === "matchStart") {
+    tone(262, 0, 0.15, { type: "triangle", volume: 0.08 });
+    tone(392, 0.12, 0.16, { type: "triangle", volume: 0.085 });
+    tone(523, 0.24, 0.24, { type: "sine", volume: 0.1 });
+  } else if (name === "guessSubmit") {
+    tone(220, 0, 0.08, { type: "triangle", volume: 0.075 });
+    tone(277, 0.07, 0.08, { type: "triangle", volume: 0.08 });
+    tone(330, 0.14, 0.12, { type: "triangle", volume: 0.085 });
+    tone(440, 0.22, 0.18, { type: "sine", volume: 0.09 });
+  } else if (name === "guessCorrect") {
+    noise(0.05, 0.3, { frequency: 2800, filterType: "highpass", volume: 0.045 });
+    [523, 659, 784, 1047].forEach((frequency, index) => tone(frequency, index * 0.1, 0.25, { type: "triangle", volume: 0.105 }));
+  } else if (name === "guessWrong") {
+    tone(392, 0, 0.18, { type: "sawtooth", volume: 0.07 });
+    tone(294, 0.15, 0.2, { type: "triangle", volume: 0.09 });
+    tone(196, 0.32, 0.3, { type: "sine", volume: 0.105 });
+  } else if (name === "roundEnd") {
+    noise(0.08, 0.38, { frequency: 3200, filterType: "highpass", volume: 0.04 });
+    [392, 523, 659, 784].forEach((frequency, index) => tone(frequency, index * 0.12, 0.3, { type: "triangle", volume: 0.095 }));
+  } else if (name === "seriesEnd") {
+    noise(0.08, 0.7, { frequency: 3000, filterType: "highpass", volume: 0.055 });
+    [262, 330, 392, 523, 659, 784, 1047].forEach((frequency, index) => tone(frequency, index * 0.11, 0.36, { type: index < 3 ? "triangle" : "sine", volume: 0.105 }));
+    tone(523, 0.82, 0.7, { type: "sine", volume: 0.09 });
+    tone(659, 0.82, 0.7, { type: "sine", volume: 0.08 });
+    tone(784, 0.82, 0.7, { type: "sine", volume: 0.075 });
+  } else if (name === "messageIncoming") {
+    tone(740, 0, 0.07, { type: "sine", volume: 0.06 });
+    tone(930, 0.055, 0.1, { type: "sine", volume: 0.065 });
+  } else if (name === "messageSend") {
+    tone(580, 0, 0.06, { type: "triangle", volume: 0.06 });
+    tone(820, 0.045, 0.09, { type: "sine", volume: 0.065 });
+  } else if (name === "playerJoin") {
+    tone(440, 0, 0.09, { type: "triangle", volume: 0.065 });
+    tone(554, 0.07, 0.11, { type: "triangle", volume: 0.07 });
+  } else if (name === "error") {
+    tone(180, 0, 0.16, { type: "square", endFrequency: 120, volume: 0.05 });
+  }
+}
+
+function handleStateAudio(previousState, nextState, eventData, packetEvent) {
+  if (!previousState || !nextState) return;
+  const previousStatus = previousState.room?.status;
+  const nextStatus = nextState.room?.status;
+  const meId = nextState.me?.id;
+
+  const soundEvents = eventData?.type === "batch" ? (eventData.events || []) : (eventData ? [eventData] : []);
+  soundEvents.forEach((soundEvent, index) => {
+    const eventDelay = index * 0.34;
+    if (soundEvent.type === "draw") {
+      playSound("draw", { delay: eventDelay });
+      if (soundEvent.actorId === meId) playSound("stepReady", { delay: eventDelay + 0.32 });
+    } else if (soundEvent.type === "categorise") {
+      playSound("categorise", { delay: eventDelay });
+    } else if (soundEvent.type === "compare") {
+      playSound(soundEvent.isSame ? "compareYes" : "compareNo", { delay: eventDelay });
+    } else if (soundEvent.type === "gotfive") {
+      playSound(soundEvent.isCorrect ? "guessCorrect" : "guessWrong", { delay: eventDelay });
+    }
+  });
+  const gotFiveEvent = soundEvents.find((soundEvent) => soundEvent.type === "gotfive");
+  const actionSoundDuration = soundEvents.length > 1 ? soundEvents.length * 0.34 : 0;
+
+  if (previousStatus === "lobby" && nextStatus === "playing") {
+    playSound("matchStart");
+    if (nextState.turnPlayerId === meId) playSound("myTurn", { delay: 0.55 });
+  } else if (previousStatus === "playing" && nextStatus === "between_matches") {
+    playSound("roundEnd", { delay: gotFiveEvent ? actionSoundDuration + 0.55 : actionSoundDuration });
+  } else if (previousStatus === "playing" && nextStatus === "finished") {
+    playSound("seriesEnd", { delay: gotFiveEvent ? actionSoundDuration + 0.55 : actionSoundDuration });
+  } else if (nextStatus === "playing") {
+    const becameMyTurn = previousState.turnPlayerId !== meId && nextState.turnPlayerId === meId;
+    if (becameMyTurn) playSound("myTurn", { delay: soundEvents.length ? actionSoundDuration + 0.28 : 0 });
+    const advancedToAction = previousState.turnPlayerId === meId
+      && nextState.turnPlayerId === meId
+      && previousState.room?.phase !== "action"
+      && nextState.room?.phase === "action";
+    if (advancedToAction && eventData?.type !== "draw") playSound("stepReady");
+  }
+
+  const previousPlayers = previousState.players?.length || 0;
+  const nextPlayers = nextState.players?.length || 0;
+  if (nextStatus === "lobby" && previousState.room?.code === nextState.room?.code && nextPlayers > previousPlayers) {
+    playSound("playerJoin");
+  }
+  const previousChat = previousState.chat?.length || 0;
+  const nextChat = nextState.chat?.length || 0;
+  const latestChat = nextState.chat?.[nextChat - 1];
+  if (packetEvent === "chat" && nextChat > previousChat && latestChat?.playerId !== meId) {
+    playSound("messageIncoming");
+  }
+}
+
+setupSoundControls();
 connect();
 setInterval(updateClocks, 1000);
 setInterval(sendHeartbeat, 25000);
@@ -93,6 +388,7 @@ function connect() {
         && ui.state?.room?.revision === packet.data?.room?.revision;
       if (isRedundantSync) return;
       ui.validatingRoom = false;
+      const previousState = ui.state;
       ui.state = packet.data;
       const chatLength = packet.data?.chat?.length || 0;
       if (packet.event === "roomJoined" || ui.chatOpen) {
@@ -112,6 +408,7 @@ function connect() {
         }, 900);
       }
       reconcileLocalSelection();
+      handleStateAudio(previousState, packet.data, packet.data?.eventData, packet.event);
       scheduleServerRender();
       return;
     }
@@ -122,6 +419,7 @@ function connect() {
       return;
     }
     if (packet.event === "error") {
+      playSound("error");
       handleServerError(packet.data?.message || "เกิดข้อผิดพลาด");
     }
   });
@@ -417,7 +715,7 @@ function renderGame() {
             <div class="tool-head">
               <h2><span class="step-number">1</span> จั่วไทล์</h2>
               ${canDraw
-                ? `<span class="step-state is-now">ทำขั้นตอนนี้ตอนนี้</span>`
+                ? `<span class="step-state is-now"><b>▶</b> ทำ STEP 1 ตอนนี้</span>`
                 : canAction
                   ? `<span class="step-state is-done">✓ จั่วแล้ว</span>`
                   : `<span class="status-pill">กองที่เหลือ</span>`}
@@ -437,7 +735,7 @@ function renderGame() {
               <h2><span class="step-number">2</span> ขอคำใบ้</h2>
               <div class="tool-actions">
                 ${canAction
-                  ? `<span class="step-state is-now">ทำขั้นตอนนี้ตอนนี้</span>`
+                  ? `<span class="step-state is-now"><b>▶</b> ทำ STEP 2 ตอนนี้</span>`
                   : `<span class="status-pill">${canDraw ? "รอทำ Step 1" : "รอถึงตาคุณ"}</span>`}
               </div>
             </div>
@@ -945,7 +1243,8 @@ function renderPostMatch() {
           </div>
         </div>
 
-        ${isFinal ? renderPodium(standings) : renderInterimStandings(standings, series)}
+        ${isFinal ? renderPodium(standings) : ""}
+        ${renderCurrentMatchStandings(match)}
 
         <div class="summary-metrics">
           <div><strong>${series.completed}/${series.total}</strong><span>เกมที่เล่นแล้ว</span></div>
@@ -955,7 +1254,8 @@ function renderPostMatch() {
           <div><strong>${actionCounts.gotfive || 0}</strong><span>GOT FIVE!</span></div>
         </div>
 
-        ${renderSeriesStandingTable(standings, isFinal)}
+        ${renderMatchRankMatrix(series, standings, match)}
+        ${renderSeriesStandingTable(standings, series)}
 
         <div class="summary-grid">
           <section class="summary-section">
@@ -1010,31 +1310,120 @@ function renderPodium(standings) {
   `;
 }
 
-function renderInterimStandings(standings, series) {
+function renderCurrentMatchStandings(match) {
+  const rankings = [...(match.rankings || [])].sort((a, b) => Number(a.rank || 99) - Number(b.rank || 99));
+  if (!rankings.length) return "";
+  const playerCount = rankings.length;
+  const playersById = new Map((match.players || []).map((player) => [player.id, player]));
   return `
-    <section class="interim-board">
-      <div>
-        <h3>ตารางคะแนนชั่วคราว</h3>
-        <p class="helper">ยังไม่มอบรางวัลรวม รอจบเกมที่ ${series.total}</p>
+    <section class="interim-board current-match-board">
+      <div class="summary-section-heading">
+        <div>
+          <span class="section-kicker">CURRENT GAME</span>
+          <h3>ตารางคะแนนรอบปัจจุบัน · เกมที่ ${match.matchIndex}/${match.matchTotal}</h3>
+          <p class="helper">ผลเฉพาะเกมนี้ ไม่รวมคะแนนจากเกมก่อนหน้า</p>
+        </div>
+        <span class="current-game-pill">จบเกมที่ ${match.matchIndex}</span>
       </div>
       <div class="postmatch-summary">
-        ${standings.map((entry) => `
-          <div class="rank-card rank-${entry.seriesRank || entry.rank}" data-player-color="${escapeHtml(entry.color || "slate")}">
-            <span class="rank-num">#${entry.seriesRank || entry.rank}</span>
-            <strong>${escapeHtml(entry.name)}</strong>
-            <div class="helper">${entry.wins || 0} ชนะ · ${entry.points || 0} แต้ม · เฉลี่ยอันดับ ${entry.avgRank ?? "-"} · ทายรอบ ${entry.lastGuessRound ?? "-"}</div>
-          </div>
-        `).join("")}
+        ${rankings.map((entry) => {
+          const rank = Number(entry.rank || playerCount);
+          const points = Math.max(0, playerCount - rank + 1);
+          const player = playersById.get(entry.playerId);
+          const guessRound = player?.stats?.guessRound;
+          return `
+            <article class="rank-card match-rank-card rank-${rank}" data-player-color="${escapeHtml(entry.color || "slate")}">
+              <div class="match-rank-head">
+                <span class="rank-num">#${rank}</span>
+                <span class="match-status status-${escapeHtml(entry.status || "unfinished")}">${rankStatusThai(entry.status)}</span>
+              </div>
+              <div class="match-rank-player">
+                ${avatarHtml(entry, "badge")}
+                <strong>${escapeHtml(entry.name)}</strong>
+              </div>
+              <div class="match-rank-details">
+                <span><b>${points}</b> แต้มเกมนี้</span>
+                <span>ทายรอบ ${guessRound ?? "-"}</span>
+              </div>
+            </article>
+          `;
+        }).join("")}
       </div>
     </section>
   `;
 }
 
-function renderSeriesStandingTable(standings, isFinal) {
+function renderMatchRankMatrix(series, standings, currentMatch) {
+  const history = [...(series.history || [])];
+  if (!history.some((match) => Number(match.matchIndex) === Number(currentMatch.matchIndex))) {
+    history.push(currentMatch);
+  }
+  const historyByIndex = new Map(history.map((match) => [Number(match.matchIndex), match]));
+  const total = Math.max(1, Number(series.total || currentMatch.matchTotal || history.length));
+  const gameIndexes = Array.from({ length: total }, (_, index) => index + 1);
+  const players = standings?.length ? standings : (currentMatch.rankings || []);
+  if (!players.length) return "";
+  return `
+    <section class="summary-section match-rank-section">
+      <div class="summary-section-heading">
+        <div>
+          <span class="section-kicker">GAME BY GAME</span>
+          <h3>อันดับรายเกม</h3>
+          <p class="helper">ดูอันดับที่ผู้เล่นแต่ละคนได้ในทุกเกมย่อย และผลรวมจนถึงเกมล่าสุด</p>
+        </div>
+        <span class="completed-games-pill">เล่นแล้ว ${series.completed ?? history.length}/${total} เกม</span>
+      </div>
+      <div class="series-table-wrap">
+        <table class="series-table match-rank-table">
+          <thead>
+            <tr>
+              <th>ผู้เล่น</th>
+              ${gameIndexes.map((gameIndex) => `<th>เกม ${gameIndex}</th>`).join("")}
+              <th>แต้มรวม</th>
+              <th>อันดับรวม</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${players.map((entry) => `
+              <tr data-player-color="${escapeHtml(entry.color || "slate")}">
+                <td class="series-player">${avatarHtml(entry, "badge")}<strong>${escapeHtml(entry.name)}</strong></td>
+                ${gameIndexes.map((gameIndex) => {
+                  const game = historyByIndex.get(gameIndex);
+                  const result = game?.rankings?.find((rank) => rank.playerId === entry.playerId);
+                  if (!result) {
+                    return `<td class="match-result-cell is-pending"><span>—</span><small>รอแข่ง</small></td>`;
+                  }
+                  const playerCount = Math.max(1, game.rankings?.length || game.players?.length || players.length);
+                  const points = Math.max(0, playerCount - Number(result.rank || playerCount) + 1);
+                  return `
+                    <td class="match-result-cell">
+                      <span class="match-place-badge place-${result.rank}">#${result.rank}</span>
+                      <small>${rankStatusThai(result.status)} · ${points} แต้ม</small>
+                    </td>
+                  `;
+                }).join("")}
+                <td class="match-total-points"><strong>${entry.points ?? "-"}</strong></td>
+                <td><span class="rank-num">#${entry.seriesRank || entry.rank}</span></td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function renderSeriesStandingTable(standings, series) {
   if (!standings?.length) return "";
   return `
     <section class="summary-section">
-      <h3>${isFinal ? "ตารางคะแนนรวม" : "ตารางคะแนนก่อนเกมถัดไป"}</h3>
+      <div class="summary-section-heading">
+        <div>
+          <span class="section-kicker">SERIES TOTAL</span>
+          <h3>ตารางคะแนนรวมทุกเกม</h3>
+          <p class="helper">รวมผลหลังเล่น ${series.completed ?? 0}/${series.total ?? 1} เกม ใช้จัดอันดับผู้ชนะของทั้งซีรีส์</p>
+        </div>
+      </div>
       <div class="series-table-wrap">
         <table class="series-table">
           <thead>
@@ -1174,6 +1563,14 @@ function rankStatus(status) {
   if (status === "survivor") return "Survivor";
   if (status === "eliminated") return "Eliminated";
   return "Unfinished";
+}
+
+function rankStatusThai(status) {
+  if (status === "winner") return "ชนะ";
+  if (status === "finished") return "ทายถูก";
+  if (status === "survivor") return "รอดคนสุดท้าย";
+  if (status === "eliminated") return "ตกรอบ";
+  return "จบเกม";
 }
 
 function renderLobbyPlayer(player, me) {
@@ -1432,7 +1829,10 @@ function bindGame() {
     ui.chatDraft = event.target.value;
   });
   bind("#chat-input", "keydown", (event) => {
-    if (event.key === "Enter") sendChat();
+    if (event.key === "Enter") {
+      playSound("messageSend");
+      sendChat();
+    }
   });
   bind("#send-chat", "click", sendChat);
   bind("#cancel-guess", "click", () => {

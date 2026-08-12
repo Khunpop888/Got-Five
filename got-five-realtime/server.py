@@ -1467,8 +1467,23 @@ def handle_guess(client: Client, data: dict[str, Any]) -> None:
     player = require_player(room, client)
     result = apply_guess(room, player, data.get("guess"))
     client.send("guessResult", result)
-    broadcast_room(room)
+    broadcast_room(
+        room,
+        "state",
+        gotfive_event(room, player, result),
+    )
     maybe_schedule_bot_turn(room)
+
+
+def gotfive_event(room: Room, player: Player, result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "type": "gotfive",
+        "actorId": player.id,
+        "isCorrect": result["isCorrect"],
+        "matchEnded": room.status in {"between_matches", "finished"},
+        "seriesFinal": room.status == "finished",
+        "matchIndex": room.match_index,
+    }
 
 
 def require_room(client: Client) -> Room:
@@ -1552,8 +1567,14 @@ def maybe_schedule_bot_turn(room: Room) -> None:
             try:
                 if room.status != "playing" or current_player(room) is not player:
                     return
-                run_bot_turn(room, player)
-                broadcast_room(room)
+                sound_events = run_bot_turn(room, player)
+                if len(sound_events) == 1:
+                    animation = sound_events[0]
+                elif sound_events:
+                    animation = {"type": "batch", "events": sound_events}
+                else:
+                    animation = None
+                broadcast_room(room, "state", animation)
                 maybe_schedule_bot_turn(room)
             except Exception:
                 traceback.print_exc()
@@ -1567,45 +1588,53 @@ def maybe_schedule_bot_turn(room: Room) -> None:
     timer.start()
 
 
-def run_bot_turn(room: Room, player: Player) -> None:
+def run_bot_turn(room: Room, player: Player) -> list[dict[str, Any]]:
+    sound_events: list[dict[str, Any]] = []
     certain_guess = bot_certain_guess(room, player)
     if certain_guess:
-        apply_guess(room, player, certain_guess)
-        return
+        result = apply_guess(room, player, certain_guess)
+        sound_events.append(gotfive_event(room, player, result))
+        return sound_events
 
     if room.phase == "draw":
         draw_color = bot_choose_draw_color(room, player)
         if draw_color is not None:
-            apply_draw(room, player, draw_color)
+            result = apply_draw(room, player, draw_color)
+            sound_events.append({"type": "draw", "actorId": player.id, **result})
         elif room.center:
             room.phase = "action"
         else:
             finish_room(room, winner_id=None, reason="no_tiles")
-            return
+            return sound_events
 
     if room.status != "playing" or room.phase != "action" or not room.center:
-        return
+        return sound_events
 
     responder = bot_choose_responder(room, player)
     if not responder:
         end_turn(room)
-        return
+        return sound_events
 
     assignments, candidates = bot_possible_assignments(room, player, limit=80)
     compare_choice = bot_best_compare_choice(room, candidates)
     categorise_choice = bot_best_categorise_choice(room, assignments)
     if compare_choice and (not categorise_choice or compare_choice[2] >= categorise_choice[1]):
         tile, slot, _score = compare_choice
-        apply_compare(room, player, responder.id, tile.id, slot)
+        result = apply_compare(room, player, responder.id, tile.id, slot)
+        sound_events.append({"type": "compare", "actorId": player.id, **result})
     elif categorise_choice:
         tile, _score = categorise_choice
-        apply_categorise(room, player, responder.id, tile.id)
+        result = apply_categorise(room, player, responder.id, tile.id)
+        sound_events.append({"type": "categorise", "actorId": player.id, **result})
     elif compare_choice:
         tile, slot, _score = compare_choice
-        apply_compare(room, player, responder.id, tile.id, slot)
+        result = apply_compare(room, player, responder.id, tile.id, slot)
+        sound_events.append({"type": "compare", "actorId": player.id, **result})
     else:
         tile = random.choice(room.center)
-        apply_categorise(room, player, responder.id, tile.id)
+        result = apply_categorise(room, player, responder.id, tile.id)
+        sound_events.append({"type": "categorise", "actorId": player.id, **result})
+    return sound_events
 
 
 class GotFiveHandler(BaseHTTPRequestHandler):

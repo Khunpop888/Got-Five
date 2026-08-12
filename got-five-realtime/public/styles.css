@@ -32,6 +32,130 @@
   --glow-pink: 0 0 22px rgba(240, 20, 85, 0.3);
 }
 
+/* Active-step contrast and clipped clue controls fix (v4) */
+.game-screen .tool-panel.step-panel.is-active-step {
+  border: 5px solid #ef4444;
+  border-top-width: 7px;
+  background:
+    linear-gradient(145deg, rgba(255, 251, 235, 0.99), rgba(254, 242, 242, 0.98));
+  box-shadow:
+    0 0 0 4px rgba(250, 204, 21, 0.82),
+    0 0 30px rgba(239, 68, 68, 0.42),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.82);
+}
+
+.tool-panel.step-panel.is-active-step .tool-head {
+  min-height: 34px;
+  margin: -5px -5px 5px;
+  padding: 4px 7px;
+  border-radius: 0 0 8px 8px;
+  color: #fff;
+  background: linear-gradient(105deg, #111827, #7f1d1d 68%, #dc2626);
+  box-shadow: 0 5px 12px rgba(127, 29, 29, 0.24);
+}
+
+.tool-panel.step-panel.is-active-step .tool-head h2 {
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.28);
+}
+
+.tool-panel.step-panel.is-active-step .step-number {
+  color: #111827;
+  background: #facc15;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.88),
+    0 0 16px rgba(250, 204, 21, 0.92);
+}
+
+.tool-panel.step-panel .step-state.is-now {
+  min-height: 28px;
+  padding: 4px 11px;
+  border: 2px solid #fff;
+  border-radius: 7px;
+  color: #fff;
+  background: #dc2626;
+  box-shadow:
+    0 0 0 3px #facc15,
+    0 4px 12px rgba(0, 0, 0, 0.28);
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+.tool-panel.step-panel .step-state.is-now b {
+  margin-right: 4px;
+  color: #fef08a;
+  font-size: 15px;
+}
+
+.tool-panel.step-panel.is-step-complete {
+  border-color: #16a34a;
+  box-shadow:
+    0 0 0 2px rgba(34, 197, 94, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.78);
+}
+
+@media (min-width: 1181px) {
+  .table-zone > .tool-panel.step-panel {
+    padding: 7px;
+  }
+
+  .table-zone > .tool-panel.step-panel .tool-head {
+    min-height: 30px;
+    margin-bottom: 4px;
+  }
+
+  .table-zone > .tool-panel.step-two {
+    display: grid;
+    grid-template-rows: auto 72px 34px;
+    align-content: start;
+  }
+
+  .table-zone > .tool-panel.step-two .center-tiles {
+    width: 100%;
+    height: 72px;
+    min-height: 72px;
+    padding: 3px 8px;
+    overflow-y: hidden;
+  }
+
+  .table-zone > .tool-panel.step-two .clue-action-grid {
+    min-height: 34px;
+    margin-top: 3px;
+    align-self: end;
+  }
+
+  .table-zone > .tool-panel.step-two .clue-action-buttons {
+    height: 34px;
+  }
+
+  .table-zone > .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 34px;
+    height: 34px;
+    padding: 5px 12px;
+    line-height: 1.1;
+  }
+}
+
+@media (max-width: 700px) {
+  .tool-panel.step-panel.is-active-step .tool-head {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 7px;
+    padding: 7px;
+  }
+
+  .tool-panel.step-panel.is-active-step .tool-actions {
+    justify-content: stretch;
+  }
+
+  .tool-panel.step-panel .step-state.is-now {
+    width: 100%;
+    min-height: 34px;
+    font-size: 12px;
+  }
+}
+
 /* Guided turn flow and safe clue actions (v3) */
 .step-panel .tool-head h2 {
   display: flex;
@@ -2327,6 +2451,53 @@ button {
   font-weight: 800;
 }
 
+.sound-toggle {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 80;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px;
+  border: 2px solid rgba(125, 211, 252, 0.78);
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(145deg, rgba(3, 105, 161, 0.96), rgba(30, 64, 175, 0.96));
+  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.3);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 1000;
+  transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
+}
+
+.sound-toggle:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.sound-toggle:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.sound-toggle:focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 3px;
+}
+
+.sound-toggle.is-muted {
+  border-color: rgba(148, 163, 184, 0.76);
+  color: #e2e8f0;
+  background: linear-gradient(145deg, rgba(51, 65, 85, 0.96), rgba(15, 23, 42, 0.96));
+}
+
+.sound-toggle-icon {
+  font-size: 17px;
+  line-height: 1;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -2808,6 +2979,41 @@ button {
   margin: 0;
 }
 
+.summary-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.section-kicker {
+  display: inline-block;
+  margin-bottom: 3px;
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: 0.12em;
+}
+
+.current-game-pill,
+.completed-games-pill {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid #93c5fd;
+  border-radius: 999px;
+  color: #1e3a8a;
+  background: #dbeafe;
+  font-size: 12px;
+  font-weight: 1000;
+}
+
+.current-match-board {
+  border: 2px solid #60a5fa;
+  background:
+    linear-gradient(125deg, rgba(219, 234, 254, 0.86), rgba(255, 255, 255, 0.94) 46%, rgba(224, 242, 254, 0.82));
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.12);
+}
+
 .summary-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -2950,6 +3156,128 @@ button {
   padding: 12px;
   flex: 1 1 180px;
   min-height: 84px;
+}
+
+.match-rank-card {
+  display: grid;
+  gap: 10px;
+  min-height: 126px;
+  border-left: 7px solid var(--player-color, var(--slate));
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--player-color, var(--slate)) 10%, #fff), #fff 58%);
+}
+
+.match-rank-head,
+.match-rank-player,
+.match-rank-details {
+  display: flex;
+  align-items: center;
+}
+
+.match-rank-head {
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.match-rank-player {
+  gap: 8px;
+}
+
+.match-rank-player strong {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.match-rank-details {
+  justify-content: space-between;
+  gap: 10px;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.match-rank-details b {
+  color: #111827;
+  font-size: 16px;
+}
+
+.match-status {
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #334155;
+  background: #e2e8f0;
+  font-size: 11px;
+  font-weight: 1000;
+}
+
+.match-status.status-winner,
+.match-status.status-finished,
+.match-status.status-survivor {
+  color: #065f46;
+  background: #d1fae5;
+}
+
+.match-status.status-eliminated {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.match-rank-section {
+  border-color: #bfdbfe;
+}
+
+.match-rank-table {
+  min-width: 760px;
+}
+
+.match-rank-table th:not(:first-child),
+.match-rank-table td:not(:first-child) {
+  text-align: center;
+}
+
+.match-result-cell {
+  min-width: 104px;
+}
+
+.match-result-cell small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.match-place-badge {
+  display: inline-flex;
+  min-width: 37px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  color: #fff;
+  background: #64748b;
+  font-weight: 1000;
+}
+
+.match-place-badge.place-1 { color: #713f12; background: #facc15; }
+.match-place-badge.place-2 { color: #1f2937; background: #d1d5db; }
+.match-place-badge.place-3 { color: #7c2d12; background: #fdba74; }
+.match-place-badge.place-4 { background: #ef4444; }
+
+.match-result-cell.is-pending span {
+  color: #94a3b8;
+  font-size: 18px;
+  font-weight: 1000;
+}
+
+.match-result-cell.is-pending small {
+  color: #94a3b8;
+}
+
+.match-total-points strong {
+  color: #1d4ed8;
+  font-size: 19px;
 }
 
 .rank-card strong {
@@ -3505,6 +3833,17 @@ body[data-view="game"]::after {
     background-attachment: scroll;
   }
 
+  .sound-toggle {
+    left: 8px;
+    bottom: 8px;
+    min-height: 40px;
+    padding: 7px 10px;
+  }
+
+  .sound-toggle-label {
+    display: none;
+  }
+
   .start-screen,
   .lobby-screen,
   .game-screen {
@@ -3910,6 +4249,20 @@ body[data-view="game"]::after {
 
   .postmatch-head {
     display: grid;
+  }
+
+  .summary-section-heading {
+    display: grid;
+    gap: 8px;
+  }
+
+  .current-game-pill,
+  .completed-games-pill {
+    width: fit-content;
+  }
+
+  .postmatch-summary {
+    grid-template-columns: 1fr;
   }
 
   .summary-metrics {

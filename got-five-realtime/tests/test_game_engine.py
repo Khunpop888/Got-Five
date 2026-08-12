@@ -119,6 +119,37 @@ class GameEngineTests(unittest.TestCase):
         self.assertFalse(second.active)
         self.assertEqual(room.status, "playing")
 
+    def test_guess_broadcast_includes_realtime_sound_event(self):
+        first = server.create_player("Alice", "cyan", 0)
+        second = server.create_player("Bob", "rose", 1)
+        room = server.Room(code="SND01", max_players=2, host_id=first.id, players=[first, second], match_total=2)
+        server.start_room_game(room, starter_index=0)
+
+        class FakeClient:
+            def __init__(self):
+                self.alive = True
+                self.player_id = first.id
+                self.room_code = room.code
+                self.sent = []
+
+            def send(self, event, data):
+                self.sent.append((event, data))
+
+        client = FakeClient()
+        room.clients.add(client)
+        server.ROOMS[room.code] = room
+        try:
+            server.handle_guess(client, {"guess": [1, 1, 1, 1, 1]})
+        finally:
+            server.ROOMS.pop(room.code, None)
+
+        state_packet = next(data for event, data in client.sent if event == "state")
+        self.assertEqual(state_packet["eventData"]["type"], "gotfive")
+        self.assertEqual(state_packet["eventData"]["actorId"], first.id)
+        self.assertFalse(state_packet["eventData"]["isCorrect"])
+        self.assertTrue(state_packet["eventData"]["matchEnded"])
+        self.assertFalse(state_packet["eventData"]["seriesFinal"])
+
     def test_final_ranking_keeps_finishers_before_eliminated_players(self):
         first = server.create_player("Alice", "cyan", 0)
         second = server.create_player("Bob", "rose", 1)
@@ -391,6 +422,20 @@ class GameEngineTests(unittest.TestCase):
 
         self.assertIsNone(server.bot_certain_guess(room, bot))
 
+    def test_bot_turn_returns_ordered_sound_events_for_every_action(self):
+        human = server.create_player("Human", "rose", 0)
+        bot = server.create_player("Bot", "cyan", 1, kind="bot")
+        room = server.Room(code="SND02", max_players=2, host_id=human.id, players=[human, bot])
+        server.start_room_game(room, starter_index=1)
+
+        events = server.run_bot_turn(room, bot)
+
+        self.assertEqual(events[0]["type"], "draw")
+        self.assertEqual(events[0]["actorId"], bot.id)
+        self.assertEqual(len(events), 2)
+        self.assertIn(events[1]["type"], {"categorise", "compare"})
+        self.assertEqual(events[1]["actorId"], bot.id)
+
     def test_multi_match_series_waits_until_final_match_for_awards(self):
         first = server.create_player("Alice", "cyan", 0)
         second = server.create_player("Bob", "rose", 1)
@@ -408,6 +453,9 @@ class GameEngineTests(unittest.TestCase):
         self.assertEqual(series["standings"][0]["playerId"], first.id)
         self.assertEqual(series["standings"][0]["wins"], 1)
         self.assertEqual(series["standings"][0]["lastGuessRound"], 1)
+        self.assertEqual(series["history"][0]["matchIndex"], 1)
+        self.assertEqual(series["history"][0]["rankings"][0]["playerId"], first.id)
+        self.assertEqual(series["history"][0]["rankings"][0]["rank"], 1)
 
         server.start_room_game(room, starter_index=1)
         self.assertEqual(room.match_index, 2)
@@ -419,6 +467,9 @@ class GameEngineTests(unittest.TestCase):
         self.assertEqual(final_series["completed"], 2)
         self.assertEqual(sum(entry["wins"] for entry in final_series["standings"]), 2)
         self.assertEqual(len(final_series["history"]), 2)
+        self.assertEqual(final_series["history"][1]["matchIndex"], 2)
+        self.assertEqual(final_series["history"][1]["rankings"][0]["playerId"], second.id)
+        self.assertEqual(final_series["history"][1]["rankings"][0]["rank"], 1)
 
     def test_websocket_reader_reassembles_fragmented_text_frames(self):
         message = json.dumps(

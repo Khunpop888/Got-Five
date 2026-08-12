@@ -12,6 +12,7 @@
 - สุ่มผู้เล่นเริ่มเกมบน server ทุกแมตช์ ไม่ล็อกที่เจ้าของห้องหรือผู้เล่นคนแรก
 - Private Board 1-60 สำหรับขีดฆ่าตัวเลขแบบส่วนตัว
 - Categorise และ Compare พร้อม animation/highlight
+- ระบบเสียงครบทั้งการคลิก เลือก จั่ว Categorise/Compare เปลี่ยนเทิร์น ทายผล จบรอบ และจบซีรีส์ พร้อมปุ่มเปิด/ปิดที่จดจำค่า
 - Post-match statistics: ranking, เวลา, จำนวนเทิร์น, action count, compare yes/no, จำนวนครั้ง/ความแม่นยำในการทาย
 - Layout rack คู่แข่งแก้ให้มีพื้นที่สำหรับ compare tiles และ scroll แนวนอนบนจอเล็ก
 
