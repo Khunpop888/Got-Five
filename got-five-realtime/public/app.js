@@ -61,6 +61,83 @@ const gameAudio = {
   userActivated: false,
 };
 
+const gameNarrator = {
+  supported: "speechSynthesis" in window && "SpeechSynthesisUtterance" in window,
+  voice: null,
+  timers: new Set(),
+  sequence: 0,
+  history: [],
+};
+
+function setupNarrator() {
+  document.documentElement.dataset.narrator = gameNarrator.supported ? "loading" : "unsupported";
+  if (!gameNarrator.supported) return;
+  const refreshVoice = () => {
+    const voices = window.speechSynthesis.getVoices();
+    const thaiVoices = voices.filter((voice) => /^th(?:-|_)/i.test(voice.lang || ""));
+    gameNarrator.voice = thaiVoices.find((voice) => voice.default)
+      || thaiVoices.find((voice) => /premwadee|pattara|narisa|thai|google|microsoft/i.test(voice.name || ""))
+      || thaiVoices[0]
+      || null;
+    document.documentElement.dataset.narrator = "ready";
+    document.documentElement.dataset.narratorVoice = gameNarrator.voice?.name || "browser-default-th-TH";
+  };
+  refreshVoice();
+  window.speechSynthesis.addEventListener?.("voiceschanged", refreshVoice);
+}
+
+function stopNarration() {
+  for (const timer of gameNarrator.timers) window.clearTimeout(timer);
+  gameNarrator.timers.clear();
+  if (gameNarrator.supported) window.speechSynthesis.cancel();
+  document.documentElement.dataset.narratorSpeaking = "false";
+  setEffectsDucked(false);
+}
+
+function setEffectsDucked(ducked) {
+  if (!gameAudio.master || !gameAudio.context || !ui.soundEnabled) return;
+  const now = gameAudio.context.currentTime;
+  gameAudio.master.gain.cancelScheduledValues(now);
+  gameAudio.master.gain.setTargetAtTime(ducked ? 0.28 : 0.72, now, 0.025);
+}
+
+function speakGame(text, options = {}) {
+  const phrase = String(text || "").replace(/\s+/g, " ").trim();
+  if (!phrase || !ui.soundEnabled || !gameAudio.userActivated || !gameNarrator.supported) return;
+  const delay = Math.max(0, Number(options.delay || 0));
+  const timer = window.setTimeout(() => {
+    gameNarrator.timers.delete(timer);
+    if (!ui.soundEnabled || !gameAudio.userActivated) return;
+    if (options.interrupt) window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(phrase);
+    utterance.lang = "th-TH";
+    utterance.rate = Number(options.rate || 0.96);
+    utterance.pitch = Number(options.pitch || 1.02);
+    utterance.volume = Number(options.volume || 0.96);
+    if (gameNarrator.voice) utterance.voice = gameNarrator.voice;
+    const sequence = ++gameNarrator.sequence;
+    gameNarrator.history.push(phrase);
+    gameNarrator.history = gameNarrator.history.slice(-12);
+    document.documentElement.dataset.lastNarration = phrase;
+    document.documentElement.dataset.narrationCount = String(sequence);
+    document.documentElement.dataset.narrationLog = JSON.stringify(gameNarrator.history);
+    utterance.addEventListener("start", () => {
+      document.documentElement.dataset.narratorSpeaking = "true";
+      setEffectsDucked(true);
+    });
+    utterance.addEventListener("end", () => {
+      document.documentElement.dataset.narratorSpeaking = "false";
+      setEffectsDucked(false);
+    });
+    utterance.addEventListener("error", () => {
+      document.documentElement.dataset.narratorSpeaking = "false";
+      setEffectsDucked(false);
+    });
+    window.speechSynthesis.speak(utterance);
+  }, delay * 1000);
+  gameNarrator.timers.add(timer);
+}
+
 function setupSoundControls() {
   updateSoundToggle();
   document.querySelector("#sound-toggle")?.addEventListener("click", () => {
@@ -72,7 +149,12 @@ function setupSoundControls() {
       gameAudio.master.gain.cancelScheduledValues(gameAudio.context.currentTime);
       gameAudio.master.gain.setTargetAtTime(ui.soundEnabled ? 0.72 : 0.0001, gameAudio.context.currentTime, 0.015);
     }
-    if (ui.soundEnabled) playSound("confirm");
+    if (ui.soundEnabled) {
+      playSound("confirm");
+      speakGame("เปิดเสียงและผู้บรรยายแล้ว", { delay: 0.12, interrupt: true });
+    } else {
+      stopNarration();
+    }
   });
   document.addEventListener("click", handleUiClickSound, true);
   document.addEventListener("change", (event) => {
@@ -87,11 +169,11 @@ function updateSoundToggle() {
   if (!button) return;
   button.classList.toggle("is-muted", !ui.soundEnabled);
   button.setAttribute("aria-pressed", String(ui.soundEnabled));
-  button.setAttribute("aria-label", ui.soundEnabled ? "ปิดเสียงเกม" : "เปิดเสียงเกม");
+  button.setAttribute("aria-label", ui.soundEnabled ? "ปิดเสียงและผู้บรรยาย" : "เปิดเสียงและผู้บรรยาย");
   const icon = button.querySelector(".sound-toggle-icon");
   const label = button.querySelector(".sound-toggle-label");
   if (icon) icon.textContent = ui.soundEnabled ? "🔊" : "🔇";
-  if (label) label.textContent = ui.soundEnabled ? "เสียง: เปิด" : "เสียง: ปิด";
+  if (label) label.textContent = ui.soundEnabled ? "เสียงพูด: เปิด" : "เสียงพูด: ปิด";
   document.documentElement.dataset.sound = ui.soundEnabled ? "on" : "off";
 }
 
@@ -133,6 +215,7 @@ function handleUiClickSound(event) {
 
 function unlockAudio() {
   gameAudio.userActivated = true;
+  document.documentElement.dataset.narratorUnlocked = "true";
   if (!ui.soundEnabled) return;
   const context = ensureAudioContext();
   if (!context) return;
@@ -214,10 +297,11 @@ function playSound(name, options = {}) {
   const noise = (offset, duration, config = {}) => soundNoise(context, delay + offset, duration, config);
 
   if (name === "click") {
-    tone(520, 0, 0.045, { type: "triangle", endFrequency: 610, volume: 0.055 });
+    noise(0, 0.035, { frequency: 620, filterType: "lowpass", volume: 0.022 });
+    tone(165, 0, 0.065, { type: "sine", endFrequency: 120, volume: 0.038 });
   } else if (name === "select") {
-    tone(440, 0, 0.07, { type: "triangle", volume: 0.07 });
-    tone(660, 0.055, 0.08, { type: "sine", volume: 0.065 });
+    noise(0, 0.04, { frequency: 820, filterType: "lowpass", volume: 0.024 });
+    tone(225, 0, 0.07, { type: "sine", endFrequency: 185, volume: 0.045 });
   } else if (name === "open") {
     tone(330, 0, 0.08, { type: "triangle", volume: 0.075 });
     tone(495, 0.06, 0.11, { type: "triangle", volume: 0.08 });
@@ -294,6 +378,92 @@ function playSound(name, options = {}) {
   }
 }
 
+function narratorPlayer(state, playerId) {
+  return state?.players?.find((player) => player.id === playerId) || null;
+}
+
+function narratorSubject(state, playerId, meId) {
+  if (playerId === meId) return "คุณ";
+  return narratorPlayer(state, playerId)?.name || "ผู้เล่น";
+}
+
+function narratorTileColor(tile) {
+  return TILE_NAMES[tileColorIndex(tile)] || "ไม่ทราบสี";
+}
+
+function categoriseNarration(eventData, state, meId) {
+  const actor = narratorPlayer(state, eventData.actorId);
+  const subject = narratorSubject(state, eventData.actorId, meId);
+  const number = eventData.tile?.num ?? "ไม่ทราบเลข";
+  const notch = Math.max(0, Number(eventData.notchIndex || 0));
+  const rack = actor?.tiles || [];
+  let positionText;
+  if (!rack.length) {
+    positionText = `ถูกจัดไว้ที่ตำแหน่ง ${notch + 1} บนแท่น`;
+  } else if (notch <= 0) {
+    positionText = `มีค่าน้อยกว่าไทล์สี${narratorTileColor(rack[0])}ใบแรก`;
+  } else if (notch >= rack.length) {
+    positionText = `มีค่ามากกว่าไทล์สี${narratorTileColor(rack[rack.length - 1])}ใบสุดท้าย`;
+  } else {
+    positionText = `อยู่ระหว่างไทล์สี${narratorTileColor(rack[notch - 1])} กับไทล์สี${narratorTileColor(rack[notch])}`;
+  }
+  return `${subject} เลือกแคททิกอไรซ์ เลข ${number} ${positionText}`;
+}
+
+function compareNarration(eventData, state, meId) {
+  const subject = narratorSubject(state, eventData.actorId, meId);
+  const number = eventData.tile?.num ?? "ไม่ทราบเลข";
+  const slot = Math.max(0, Number(eventData.slotIndex || 0)) + 1;
+  const result = eventData.isSame ? "เท่ากัน" : "ไม่เท่ากัน";
+  const ownerText = eventData.actorId === meId ? "ที่คุณเลือก" : `ที่ ${subject} เลือก`;
+  return `${subject} เลือกคอมแพร์ ไทล์เลข ${number} ${ownerText} มีจำนวนจุด${result}กับไทล์ลับใบที่ ${slot}`;
+}
+
+function gotFiveNarration(eventData, state, meId) {
+  const subject = narratorSubject(state, eventData.actorId, meId);
+  const actor = narratorPlayer(state, eventData.actorId);
+  if (eventData.isCorrect) {
+    const rankText = actor?.rank ? ` ได้อันดับที่ ${actor.rank} ของเกมนี้` : "";
+    return `${subject} ประกาศ ก็อต ไฟว์ ถูกต้อง${rankText}`;
+  }
+  return `${subject} ประกาศ ก็อต ไฟว์ ไม่ถูกต้อง และตกรอบ`;
+}
+
+function actionNarration(eventData, state, meId) {
+  if (eventData.type === "draw") {
+    const subject = narratorSubject(state, eventData.actorId, meId);
+    const number = eventData.tile?.num ?? "ไม่ทราบเลข";
+    const color = narratorTileColor(eventData.tile);
+    const nextStep = eventData.actorId === meId
+      ? " ขั้นตอนที่สอง เลือกไทล์กลาง แล้วเลือกแคททิกอไรซ์ หรือคอมแพร์"
+      : "";
+    return `${subject} จั่วไทล์เลข ${number} สี${color}${nextStep}`;
+  }
+  if (eventData.type === "categorise") return categoriseNarration(eventData, state, meId);
+  if (eventData.type === "compare") return compareNarration(eventData, state, meId);
+  if (eventData.type === "gotfive") return gotFiveNarration(eventData, state, meId);
+  return "";
+}
+
+function endGameNarration(state, isSeriesFinal) {
+  const meId = state?.me?.id;
+  const match = state?.match;
+  const series = state?.series;
+  const matchRank = match?.rankings?.find((entry) => entry.playerId === meId);
+  const standing = series?.standings?.find((entry) => entry.playerId === meId);
+  const matchRankText = matchRank?.rank ? `คุณได้อันดับที่ ${matchRank.rank} ในเกมนี้` : "เกมนี้จบแล้ว";
+  if (!isSeriesFinal) {
+    const totalText = standing
+      ? ` ตอนนี้คุณมี ${standing.points || 0} คะแนน อยู่ในอันดับรวมชั่วคราวที่ ${standing.seriesRank || standing.rank}`
+      : "";
+    return `จบเกมที่ ${match?.matchIndex || series?.completed || 1} ${matchRankText}${totalText}`;
+  }
+  const finalText = standing
+    ? `อันดับรวมของคุณคืออันดับที่ ${standing.seriesRank || standing.rank} ชนะ ${standing.wins || 0} เกม ได้ทั้งหมด ${standing.points || 0} คะแนน`
+    : "ประกาศผลการแข่งขันเรียบร้อยแล้ว";
+  return `จบการแข่งขันครบ ${series?.total || match?.matchTotal || 1} เกม ${matchRankText} ${finalText}`;
+}
+
 function handleStateAudio(previousState, nextState, eventData, packetEvent) {
   if (!previousState || !nextState) return;
   const previousStatus = previousState.room?.status;
@@ -313,6 +483,8 @@ function handleStateAudio(previousState, nextState, eventData, packetEvent) {
     } else if (soundEvent.type === "gotfive") {
       playSound(soundEvent.isCorrect ? "guessCorrect" : "guessWrong", { delay: eventDelay });
     }
+    const narration = actionNarration(soundEvent, nextState, meId);
+    if (narration) speakGame(narration, { delay: 0.2 + index * 0.46 });
   });
   const gotFiveEvent = soundEvents.find((soundEvent) => soundEvent.type === "gotfive");
   const actionSoundDuration = soundEvents.length > 1 ? soundEvents.length * 0.34 : 0;
@@ -320,33 +492,53 @@ function handleStateAudio(previousState, nextState, eventData, packetEvent) {
   if (previousStatus === "lobby" && nextStatus === "playing") {
     playSound("matchStart");
     if (nextState.turnPlayerId === meId) playSound("myTurn", { delay: 0.55 });
+    const starter = narratorPlayer(nextState, nextState.turnPlayerId);
+    const matchIndex = nextState.room?.matchIndex || nextState.series?.current || 1;
+    const matchTotal = nextState.room?.matchTotal || nextState.series?.total || 1;
+    const opening = nextState.turnPlayerId === meId
+      ? `เริ่มเกมที่ ${matchIndex} จากทั้งหมด ${matchTotal} เกม ถึงตาคุณแล้ว ขั้นตอนที่หนึ่ง จั่วไทล์`
+      : `เริ่มเกมที่ ${matchIndex} จากทั้งหมด ${matchTotal} เกม ผู้เล่นคนแรกคือ ${starter?.name || "ผู้เล่น"}`;
+    speakGame(opening, { delay: 0.35, interrupt: true });
   } else if (previousStatus === "playing" && nextStatus === "between_matches") {
     playSound("roundEnd", { delay: gotFiveEvent ? actionSoundDuration + 0.55 : actionSoundDuration });
+    speakGame(endGameNarration(nextState, false), { delay: 0.75 + soundEvents.length * 0.46 });
   } else if (previousStatus === "playing" && nextStatus === "finished") {
     playSound("seriesEnd", { delay: gotFiveEvent ? actionSoundDuration + 0.55 : actionSoundDuration });
+    speakGame(endGameNarration(nextState, true), { delay: 0.9 + soundEvents.length * 0.46 });
   } else if (nextStatus === "playing") {
     const becameMyTurn = previousState.turnPlayerId !== meId && nextState.turnPlayerId === meId;
-    if (becameMyTurn) playSound("myTurn", { delay: soundEvents.length ? actionSoundDuration + 0.28 : 0 });
+    if (becameMyTurn) {
+      playSound("myTurn", { delay: soundEvents.length ? actionSoundDuration + 0.28 : 0 });
+      speakGame("ถึงตาคุณแล้ว ขั้นตอนที่หนึ่ง จั่วไทล์", { delay: 0.35 + soundEvents.length * 0.46 });
+    }
     const advancedToAction = previousState.turnPlayerId === meId
       && nextState.turnPlayerId === meId
       && previousState.room?.phase !== "action"
       && nextState.room?.phase === "action";
-    if (advancedToAction && eventData?.type !== "draw") playSound("stepReady");
+    if (advancedToAction && !soundEvents.some((soundEvent) => soundEvent.type === "draw")) {
+      playSound("stepReady");
+      speakGame("ขั้นตอนที่สอง เลือกไทล์กลาง แล้วเลือกแคททิกอไรซ์ หรือคอมแพร์", { delay: 0.18 });
+    }
   }
 
   const previousPlayers = previousState.players?.length || 0;
   const nextPlayers = nextState.players?.length || 0;
   if (nextStatus === "lobby" && previousState.room?.code === nextState.room?.code && nextPlayers > previousPlayers) {
     playSound("playerJoin");
+    const previousIds = new Set((previousState.players || []).map((player) => player.id));
+    const joinedPlayer = (nextState.players || []).find((player) => !previousIds.has(player.id));
+    if (joinedPlayer) speakGame(`${joinedPlayer.name} เข้าห้องแล้ว`, { delay: 0.12 });
   }
   const previousChat = previousState.chat?.length || 0;
   const nextChat = nextState.chat?.length || 0;
   const latestChat = nextState.chat?.[nextChat - 1];
   if (packetEvent === "chat" && nextChat > previousChat && latestChat?.playerId !== meId) {
     playSound("messageIncoming");
+    speakGame(`มีข้อความใหม่จาก ${latestChat?.name || "ผู้เล่น"}`, { delay: 0.12 });
   }
 }
 
+setupNarrator();
 setupSoundControls();
 connect();
 setInterval(updateClocks, 1000);
@@ -420,7 +612,9 @@ function connect() {
     }
     if (packet.event === "error") {
       playSound("error");
-      handleServerError(packet.data?.message || "เกิดข้อผิดพลาด");
+      const errorMessage = packet.data?.message || "เกิดข้อผิดพลาด";
+      speakGame(`เกิดข้อผิดพลาด ${errorMessage}`, { delay: 0.08, interrupt: true, rate: 0.94 });
+      handleServerError(errorMessage);
     }
   });
 
