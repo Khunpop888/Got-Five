@@ -53,6 +53,19 @@ const ui = {
   soundEnabled: SAVED_SOUND_ENABLED,
 };
 
+const NativePeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+const voiceChat = {
+  supported: Boolean(navigator.mediaDevices?.getUserMedia && NativePeerConnection),
+  active: false,
+  muted: false,
+  starting: false,
+  localStream: null,
+  peers: new Map(),
+  remoteAudio: new Map(),
+  pendingCandidates: new Map(),
+};
+const VOICE_ICE_SERVERS = [{ urls: "stun:stun.l.google.com:19302" }];
+
 let pendingServerRender = null;
 
 const gameAudio = {
@@ -570,6 +583,14 @@ function connect() {
       return;
     }
     if (packet.event === "connected" || packet.event === "pong") return;
+    if (packet.event === "roomKicked" || packet.event === "roomDeleted") {
+      handleRoomExit(packet.data?.message || "ออกจากห้องแล้ว");
+      return;
+    }
+    if (packet.event === "voiceSignal") {
+      handleVoiceSignal(packet.data);
+      return;
+    }
     if (packet.event === "markUpdated") {
       applyMarkUpdate(packet.data);
       return;
@@ -600,6 +621,7 @@ function connect() {
         }, 900);
       }
       reconcileLocalSelection();
+      reconcileVoicePeers().catch((error) => console.warn("Voice reconnect failed", error));
       handleStateAudio(previousState, packet.data, packet.data?.eventData, packet.event);
       scheduleServerRender();
       return;
@@ -639,6 +661,23 @@ function sendHeartbeat() {
   if (!ui.connected || ui.validatingRoom || !ui.state?.room?.code) return;
   if (!ui.socket || ui.socket.readyState !== WebSocket.OPEN) return;
   ui.socket.send(JSON.stringify({ event: "ping", data: {} }));
+}
+
+function handleRoomExit(message) {
+  stopVoiceChat(false);
+  ui.state = null;
+  ui.validatingRoom = false;
+  ui.selectedCenterTileId = null;
+  ui.responderId = null;
+  ui.compareMode = false;
+  ui.showCategoriseConfirm = false;
+  ui.showGuess = false;
+  ui.guessResult = null;
+  ui.chatOpen = false;
+  ui.chatReadCount = 0;
+  history.replaceState(null, "", ui.ownerMode ? "/owner" : "/");
+  showToast(message);
+  render();
 }
 
 function handleServerError(message) {
@@ -846,6 +885,8 @@ function renderLobby() {
             <div class="button-row">
               <button id="add-bot" class="btn amber" ${!me?.isHost || s.players.length >= s.room.maxPlayers ? "disabled" : ""}>เพิ่ม Bot</button>
               <button id="start-game" class="btn primary" ${canStart ? "" : "disabled"}>เริ่มเกม</button>
+              ${me?.isHost ? `<button id="delete-room" class="btn danger">ลบห้อง</button>` : ""}
+              ${renderVoiceControls()}
             </div>
             <p class="helper">${me?.isHost ? "เจ้าของห้องเป็นคนเริ่มเกม" : "รอเจ้าของห้องเริ่มเกม"}</p>
           </div>
@@ -889,6 +930,7 @@ function renderGame() {
           </div>
         </div>
         <div class="button-row topbar-actions">
+          ${renderVoiceControls()}
           <button id="copy-invite" class="btn ghost">Copy Invite</button>
           <a class="btn ghost" href="/how-to-play.html" target="_blank" rel="noopener">วิธีเล่น</a>
           ${s.room.status === "playing" && me?.active ? `<button id="open-guess" class="btn rose">GOT FIVE!</button>` : ""}
@@ -1767,10 +1809,35 @@ function rankStatusThai(status) {
   return "จบเกม";
 }
 
+function renderVoiceControls() {
+  const participants = (ui.state?.players || []).filter((player) => player.voiceEnabled).length;
+  if (!voiceChat.supported) {
+    return `<span class="voice-pill is-off">เสียงไม่รองรับ</span>`;
+  }
+  const label = !voiceChat.active
+    ? "เข้าห้องเสียง"
+    : voiceChat.muted
+      ? "เปิดไมค์"
+      : "ปิดไมค์";
+  return `
+    <span class="voice-controls">
+      <button id="voice-toggle" class="btn voice-btn ${voiceChat.active ? "is-live" : ""} ${voiceChat.muted ? "is-muted" : ""}" type="button">
+        <span class="voice-dot"></span>
+        ${label}
+        <b>${participants}</b>
+      </button>
+      ${voiceChat.active ? `<button id="voice-leave" class="btn ghost voice-leave" type="button">ออกเสียง</button>` : ""}
+    </span>
+  `;
+}
+
 function renderLobbyPlayer(player, me) {
-  const remove = me?.isHost && player.kind === "bot"
+  const canManage = me?.isHost && player.id !== me?.id;
+  const remove = canManage && player.kind === "bot"
     ? `<button class="btn ghost" data-remove-bot="${escapeHtml(player.id)}">ลบ</button>`
-    : `<span class="small-pill">${player.connected ? "Online" : "Offline"}</span>`;
+    : canManage
+      ? `<button class="btn ghost danger-lite" data-kick-player="${escapeHtml(player.id)}">เตะ</button>`
+      : `<span class="small-pill">${player.connected ? "Online" : "Offline"}</span>`;
   return `
     <div class="player-row" data-player-color="${escapeHtml(player.color)}">
       ${avatarHtml(player, "small")}
@@ -1778,6 +1845,7 @@ function renderLobbyPlayer(player, me) {
         ${escapeHtml(player.name)}
         ${player.id === me?.id ? `<span class="helper">คุณ</span>` : ""}
         ${player.isHost ? `<span class="helper">Host</span>` : ""}
+        ${player.voiceEnabled ? `<span class="helper voice-inline">Voice</span>` : ""}
       </div>
       ${remove}
     </div>
@@ -1920,9 +1988,15 @@ function bindStart() {
   });
 }
 
+function bindVoiceControls() {
+  bind("#voice-toggle", "click", toggleVoiceChat);
+  bind("#voice-leave", "click", () => stopVoiceChat(true));
+}
+
 function bindLobby() {
   bindAvatarControls("lobby", true);
   bind("#copy-invite", "click", copyInvite);
+  bindVoiceControls();
   bind("#save-profile", "click", () => {
     const name = document.querySelector("#lobby-name")?.value || ui.name;
     ui.name = name;
@@ -1941,13 +2015,24 @@ function bindLobby() {
   });
   bind("#add-bot", "click", () => send("addBot"));
   bind("#start-game", "click", () => send("startGame"));
+  bind("#delete-room", "click", () => {
+    if (window.confirm("ลบห้องนี้และให้ทุกคนออกจากห้องใช่ไหม?")) {
+      send("deleteRoom");
+    }
+  });
   bindAll("[data-remove-bot]", "click", (event) => {
     send("removeBot", { playerId: event.currentTarget.dataset.removeBot });
+  });
+  bindAll("[data-kick-player]", "click", (event) => {
+    if (window.confirm("นำผู้เล่นคนนี้ออกจากห้องใช่ไหม?")) {
+      send("kickPlayer", { playerId: event.currentTarget.dataset.kickPlayer });
+    }
   });
 }
 
 function bindGame() {
   bind("#copy-invite", "click", copyInvite);
+  bindVoiceControls();
   bind("#restart-room", "click", () => send("restart"));
   bind("#next-match", "click", () => send("nextMatch"));
   bind("#restart-room-modal", "click", () => send("restart"));
@@ -2078,6 +2163,199 @@ function sendChat() {
   if (!message) return;
   ui.chatDraft = "";
   send("chat", { message });
+}
+
+async function toggleVoiceChat() {
+  if (!voiceChat.supported) {
+    showToast("Browser นี้ยังไม่รองรับห้องเสียง");
+    return;
+  }
+  if (!voiceChat.active) {
+    await startVoiceChat();
+    return;
+  }
+  setVoiceMuted(!voiceChat.muted);
+}
+
+async function startVoiceChat() {
+  if (voiceChat.starting || voiceChat.active) return;
+  voiceChat.starting = true;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: false,
+    });
+    voiceChat.localStream = stream;
+    voiceChat.active = true;
+    voiceChat.muted = false;
+    send("voiceState", { enabled: true });
+    await reconcileVoicePeers();
+    showToast("เข้าห้องเสียงแล้ว");
+  } catch (error) {
+    console.warn("Voice chat failed", error);
+    showToast("เปิดไมค์ไม่ได้ กรุณาอนุญาตสิทธิ์ไมโครโฟน");
+  } finally {
+    voiceChat.starting = false;
+    render();
+  }
+}
+
+function setVoiceMuted(muted) {
+  voiceChat.muted = Boolean(muted);
+  if (voiceChat.localStream) {
+    voiceChat.localStream.getAudioTracks().forEach((track) => {
+      track.enabled = !voiceChat.muted;
+    });
+  }
+  showToast(voiceChat.muted ? "ปิดไมค์แล้ว" : "เปิดไมค์แล้ว");
+  render();
+}
+
+function stopVoiceChat(notifyServer = true) {
+  for (const peerId of Array.from(voiceChat.peers.keys())) {
+    closeVoicePeer(peerId);
+  }
+  if (voiceChat.localStream) {
+    voiceChat.localStream.getTracks().forEach((track) => track.stop());
+  }
+  voiceChat.localStream = null;
+  voiceChat.active = false;
+  voiceChat.muted = false;
+  voiceChat.starting = false;
+  voiceChat.pendingCandidates.clear();
+  if (notifyServer) send("voiceState", { enabled: false });
+  render();
+}
+
+async function reconcileVoicePeers() {
+  if (!voiceChat.active || !ui.state?.players?.length) return;
+  const me = getMe();
+  if (!me) return;
+  const peers = ui.state.players.filter((player) => (
+    player.id !== me.id
+    && player.kind === "human"
+    && player.connected
+    && player.voiceEnabled
+  ));
+  const activePeerIds = new Set(peers.map((player) => player.id));
+  for (const peerId of Array.from(voiceChat.peers.keys())) {
+    if (!activePeerIds.has(peerId)) {
+      closeVoicePeer(peerId);
+    }
+  }
+  for (const peer of peers) {
+    const pc = await ensureVoicePeer(peer.id);
+    if (shouldCreateVoiceOffer(me, peer) && pc.signalingState === "stable" && !pc.localDescription) {
+      await createVoiceOffer(peer.id, pc);
+    }
+  }
+}
+
+function shouldCreateVoiceOffer(me, peer) {
+  const mySeat = Number.isFinite(Number(me.seat)) ? Number(me.seat) : 99;
+  const peerSeat = Number.isFinite(Number(peer.seat)) ? Number(peer.seat) : 99;
+  if (mySeat !== peerSeat) return mySeat < peerSeat;
+  return String(me.id) < String(peer.id);
+}
+
+async function ensureVoicePeer(peerId) {
+  if (voiceChat.peers.has(peerId)) return voiceChat.peers.get(peerId);
+  const pc = new NativePeerConnection({ iceServers: VOICE_ICE_SERVERS });
+  voiceChat.peers.set(peerId, pc);
+  if (voiceChat.localStream) {
+    voiceChat.localStream.getTracks().forEach((track) => pc.addTrack(track, voiceChat.localStream));
+  }
+  pc.addEventListener("icecandidate", (event) => {
+    if (event.candidate) {
+      send("voiceSignal", { to: peerId, signal: { type: "candidate", candidate: event.candidate } });
+    }
+  });
+  pc.addEventListener("track", (event) => {
+    const [stream] = event.streams;
+    if (stream) attachRemoteVoice(peerId, stream);
+  });
+  pc.addEventListener("connectionstatechange", () => {
+    if (["failed", "closed", "disconnected"].includes(pc.connectionState)) {
+      closeVoicePeer(peerId);
+    }
+  });
+  return pc;
+}
+
+async function createVoiceOffer(peerId, pc) {
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  send("voiceSignal", { to: peerId, signal: { type: "offer", sdp: pc.localDescription } });
+}
+
+async function handleVoiceSignal(data) {
+  if (!voiceChat.active || !data?.from || !data?.signal) return;
+  const peerId = data.from;
+  const signal = data.signal;
+  try {
+    const pc = await ensureVoicePeer(peerId);
+    if (signal.type === "offer" && signal.sdp) {
+      await pc.setRemoteDescription(signal.sdp);
+      await flushVoiceCandidates(peerId, pc);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      send("voiceSignal", { to: peerId, signal: { type: "answer", sdp: pc.localDescription } });
+    } else if (signal.type === "answer" && signal.sdp) {
+      await pc.setRemoteDescription(signal.sdp);
+      await flushVoiceCandidates(peerId, pc);
+    } else if (signal.type === "candidate" && signal.candidate) {
+      if (pc.remoteDescription) {
+        await pc.addIceCandidate(signal.candidate);
+      } else {
+        const list = voiceChat.pendingCandidates.get(peerId) || [];
+        list.push(signal.candidate);
+        voiceChat.pendingCandidates.set(peerId, list);
+      }
+    }
+  } catch (error) {
+    console.warn("Voice signal failed", error);
+  }
+}
+
+async function flushVoiceCandidates(peerId, pc) {
+  const list = voiceChat.pendingCandidates.get(peerId) || [];
+  voiceChat.pendingCandidates.delete(peerId);
+  for (const candidate of list) {
+    await pc.addIceCandidate(candidate);
+  }
+}
+
+function attachRemoteVoice(peerId, stream) {
+  let audio = voiceChat.remoteAudio.get(peerId);
+  if (!audio) {
+    audio = document.createElement("audio");
+    audio.autoplay = true;
+    audio.playsInline = true;
+    audio.dataset.voicePeer = peerId;
+    document.body.appendChild(audio);
+    voiceChat.remoteAudio.set(peerId, audio);
+  }
+  if (audio.srcObject !== stream) {
+    audio.srcObject = stream;
+  }
+  audio.play().catch(() => {});
+}
+
+function closeVoicePeer(peerId) {
+  const pc = voiceChat.peers.get(peerId);
+  if (pc) pc.close();
+  voiceChat.peers.delete(peerId);
+  voiceChat.pendingCandidates.delete(peerId);
+  const audio = voiceChat.remoteAudio.get(peerId);
+  if (audio) {
+    audio.srcObject = null;
+    audio.remove();
+  }
+  voiceChat.remoteAudio.delete(peerId);
 }
 
 function saveIdentityFromStart() {

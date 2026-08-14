@@ -29,6 +29,7 @@ WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 MAX_AVATAR_BYTES = 256 * 1024
 MAX_WS_MESSAGE_BYTES = 1024 * 1024
 MAX_ROOM_CODE_LEN = 24
+BOT_ACTION_DELAY_SEC = 5.0
 
 ROOMS: dict[str, "Room"] = {}
 ROOMS_LOCK = threading.RLock()
@@ -69,6 +70,7 @@ class Player:
     avatar: str = ""
     kind: str = "human"
     connected: bool = True
+    voice_enabled: bool = False
     active: bool = True
     eliminated: bool = False
     disconnected_at: float | None = None
@@ -288,6 +290,21 @@ def get_player(room: Room, player_id: str | None) -> Player | None:
     if not player_id:
         return None
     return next((player for player in room.players if player.id == player_id), None)
+
+
+def reseat_players(room: Room) -> None:
+    for seat, player in enumerate(room.players):
+        player.seat = seat
+
+
+def room_has_live_clients(room: Room) -> bool:
+    return any(getattr(client, "alive", True) for client in room.clients)
+
+
+def remove_lobby_player(room: Room, player: Player) -> None:
+    player.voice_enabled = False
+    room.players = [item for item in room.players if item.id != player.id]
+    reseat_players(room)
 
 
 def active_players(room: Room) -> list[Player]:
@@ -845,6 +862,7 @@ def serialize_player(room: Room, player: Player, viewer: Player | None) -> dict[
         "seat": player.seat,
         "kind": player.kind,
         "connected": player.connected,
+        "voiceEnabled": player.voice_enabled,
         "active": player.active,
         "eliminated": player.eliminated,
         "finished": bool(player.stats.get("wonAtTurn")) and not player.eliminated,
@@ -1235,8 +1253,12 @@ def leave_current_room(client: Client) -> None:
     room.clients.discard(client)
     player = get_player(room, client.player_id)
     if player and player.kind == "human":
-        player.connected = False
-        player.disconnected_at = time.time()
+        player.voice_enabled = False
+        if room.status == "lobby" and player.id != room.host_id:
+            remove_lobby_player(room, player)
+        else:
+            player.connected = False
+            player.disconnected_at = time.time()
         room.revision += 1
         add_log(room, "system", None, f"{player.name} หลุดการเชื่อมต่อ")
     broadcast_room(room)
@@ -1254,8 +1276,12 @@ def handle_create_room(client: Client, data: dict[str, Any]) -> None:
         requested_code = sanitize_room_code(data.get("roomCode", ""), allow_empty=True)
         code = requested_code or make_room_code()
         lookup_key = room_lookup_key(code)
-        if lookup_key in ROOMS:
-            raise GameError("รหัสห้องนี้ถูกใช้แล้ว ลองตั้งชื่ออื่น")
+        existing_room = ROOMS.get(lookup_key)
+        if existing_room:
+            if room_has_live_clients(existing_room):
+                raise GameError("รหัสห้องนี้ถูกใช้แล้ว ลองตั้งชื่ออื่น")
+            cancel_bot_timers(existing_room)
+            ROOMS.pop(lookup_key, None)
         player = create_player(
             sanitize_name(data.get("name", "Host")),
             valid_color(data.get("color", "cyan")),
@@ -1374,6 +1400,73 @@ def handle_remove_bot(client: Client, data: dict[str, Any]) -> None:
     room.revision += 1
     add_log(room, "system", None, f"ลบ Bot {bot.name}")
     broadcast_room(room)
+
+
+def handle_kick_player(client: Client, data: dict[str, Any]) -> None:
+    room = require_room(client)
+    host = require_player(room, client)
+    if host.id != room.host_id:
+        raise GameError("เฉพาะเจ้าของห้องเท่านั้น")
+    if room.status != "lobby":
+        raise GameError("เตะผู้เล่นได้เฉพาะใน Lobby")
+    target_id = str(data.get("playerId", ""))
+    target = get_player(room, target_id)
+    if not target:
+        raise GameError("ไม่พบผู้เล่น")
+    if target.id == room.host_id:
+        raise GameError("ไม่สามารถเตะเจ้าของห้องได้")
+
+    target_clients = [item for item in list(room.clients) if item.player_id == target.id]
+    remove_lobby_player(room, target)
+    for target_client in target_clients:
+        room.clients.discard(target_client)
+        target_client.room_code = None
+        target_client.player_id = None
+        target_client.send("roomKicked", {"message": "คุณถูกเจ้าของห้องนำออกจากห้อง"})
+
+    room.revision += 1
+    add_log(room, "system", None, f"{target.name} ถูกนำออกจากห้อง")
+    broadcast_room(room)
+
+
+def handle_delete_room(client: Client) -> None:
+    room = require_room(client)
+    host = require_player(room, client)
+    if host.id != room.host_id:
+        raise GameError("เฉพาะเจ้าของห้องเท่านั้น")
+    lookup_key = client.room_code
+    cancel_bot_timers(room)
+    for room_client in list(room.clients):
+        room_client.send("roomDeleted", {"message": "เจ้าของห้องลบห้องนี้แล้ว"})
+        room_client.room_code = None
+        room_client.player_id = None
+    room.clients.clear()
+    if lookup_key:
+        ROOMS.pop(lookup_key, None)
+
+
+def handle_voice_state(client: Client, data: dict[str, Any]) -> None:
+    room = require_room(client)
+    player = require_player(room, client)
+    if player.kind != "human":
+        return
+    player.voice_enabled = bool(data.get("enabled")) and player.connected
+    room.revision += 1
+    broadcast_room(room)
+
+
+def handle_voice_signal(client: Client, data: dict[str, Any]) -> None:
+    room = require_room(client)
+    sender = require_player(room, client)
+    target_id = str(data.get("to") or "")
+    target = get_player(room, target_id)
+    signal = data.get("signal")
+    if not target or target.kind != "human" or not isinstance(signal, dict):
+        return
+    payload = {"from": sender.id, "signal": signal}
+    for target_client in list(room.clients):
+        if target_client.alive and target_client.player_id == target.id:
+            target_client.send("voiceSignal", payload)
 
 
 def handle_start_game(client: Client) -> None:
@@ -1527,6 +1620,10 @@ def handle_message(client: Client, message: str) -> None:
                 handle_add_bot(client)
             elif event == "removeBot":
                 handle_remove_bot(client, data)
+            elif event == "kickPlayer":
+                handle_kick_player(client, data)
+            elif event == "deleteRoom":
+                handle_delete_room(client)
             elif event == "startGame":
                 handle_start_game(client)
             elif event == "nextMatch":
@@ -1539,6 +1636,10 @@ def handle_message(client: Client, message: str) -> None:
                 handle_mark(client, data)
             elif event == "chat":
                 handle_chat(client, data)
+            elif event == "voiceState":
+                handle_voice_state(client, data)
+            elif event == "voiceSignal":
+                handle_voice_signal(client, data)
             elif event == "gotFive":
                 handle_guess(client, data)
             elif event == "ping":
@@ -1582,7 +1683,7 @@ def maybe_schedule_bot_turn(room: Room) -> None:
                 end_turn(room, count_turn=False)
                 broadcast_room(room)
 
-    timer = threading.Timer(1.2, run_bot)
+    timer = threading.Timer(BOT_ACTION_DELAY_SEC, run_bot)
     timer.daemon = True
     room.bot_timers.append(timer)
     timer.start()
@@ -1601,8 +1702,10 @@ def run_bot_turn(room: Room, player: Player) -> list[dict[str, Any]]:
         if draw_color is not None:
             result = apply_draw(room, player, draw_color)
             sound_events.append({"type": "draw", "actorId": player.id, **result})
+            return sound_events
         elif room.center:
             room.phase = "action"
+            return sound_events
         else:
             finish_room(room, winner_id=None, reason="no_tiles")
             return sound_events

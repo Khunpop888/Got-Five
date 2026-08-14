@@ -358,6 +358,95 @@ class GameEngineTests(unittest.TestCase):
                     })
                 server.ROOMS.clear()
 
+    def test_host_can_kick_human_from_lobby(self):
+        host = server.create_player("Host", "cyan", 0)
+        guest = server.create_player("Guest", "rose", 1)
+        room = server.Room(code="KICK1", max_players=4, host_id=host.id, players=[host, guest])
+        lookup = server.room_lookup_key(room.code)
+
+        class FakeClient:
+            alive = True
+
+            def __init__(self, player):
+                self.room_code = lookup
+                self.player_id = player.id
+                self.sent = []
+
+            def send(self, event, data):
+                self.sent.append((event, data))
+
+        host_client = FakeClient(host)
+        guest_client = FakeClient(guest)
+        room.clients.update({host_client, guest_client})
+        with server.ROOMS_LOCK:
+            server.ROOMS[lookup] = room
+            try:
+                server.handle_kick_player(host_client, {"playerId": guest.id})
+            finally:
+                server.ROOMS.pop(lookup, None)
+
+        self.assertEqual([player.id for player in room.players], [host.id])
+        self.assertIsNone(guest_client.room_code)
+        self.assertTrue(any(event == "roomKicked" for event, _data in guest_client.sent))
+
+    def test_host_can_delete_room_and_reuse_room_code(self):
+        host = server.create_player("Host", "cyan", 0)
+        room = server.Room(code="samecode", max_players=4, host_id=host.id, players=[host])
+        lookup = server.room_lookup_key(room.code)
+
+        class FakeClient:
+            alive = True
+
+            def __init__(self):
+                self.room_code = lookup
+                self.player_id = host.id
+                self.sent = []
+
+            def send(self, event, data):
+                self.sent.append((event, data))
+
+        client = FakeClient()
+        room.clients.add(client)
+        with server.ROOMS_LOCK:
+            server.ROOMS[lookup] = room
+            server.handle_delete_room(client)
+
+        self.assertNotIn(lookup, server.ROOMS)
+        self.assertIsNone(client.room_code)
+        self.assertTrue(any(event == "roomDeleted" for event, _data in client.sent))
+
+    def test_voice_state_and_signal_are_room_scoped(self):
+        alice = server.create_player("Alice", "cyan", 0)
+        bob = server.create_player("Bob", "rose", 1)
+        room = server.Room(code="VOICE1", max_players=2, host_id=alice.id, players=[alice, bob])
+        lookup = server.room_lookup_key(room.code)
+
+        class FakeClient:
+            alive = True
+
+            def __init__(self, player):
+                self.room_code = lookup
+                self.player_id = player.id
+                self.sent = []
+
+            def send(self, event, data):
+                self.sent.append((event, data))
+
+        alice_client = FakeClient(alice)
+        bob_client = FakeClient(bob)
+        room.clients.update({alice_client, bob_client})
+        with server.ROOMS_LOCK:
+            server.ROOMS[lookup] = room
+            try:
+                server.handle_voice_state(alice_client, {"enabled": True})
+                server.handle_voice_signal(alice_client, {"to": bob.id, "signal": {"type": "offer", "sdp": {"type": "offer", "sdp": "x"}}})
+            finally:
+                server.ROOMS.pop(lookup, None)
+
+        self.assertTrue(alice.voice_enabled)
+        self.assertTrue(any(event == "voiceSignal" for event, _data in bob_client.sent))
+        self.assertFalse(any(event == "voiceSignal" for event, _data in alice_client.sent))
+
     def test_avatar_sanitizer_accepts_small_safe_images_only(self):
         raw = base64.b64encode(b"small-avatar").decode("ascii")
         self.assertEqual(server.sanitize_avatar(f"data:image/png;base64,{raw}"), f"data:image/png;base64,{raw}")
@@ -430,11 +519,16 @@ class GameEngineTests(unittest.TestCase):
 
         events = server.run_bot_turn(room, bot)
 
+        self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["type"], "draw")
         self.assertEqual(events[0]["actorId"], bot.id)
-        self.assertEqual(len(events), 2)
-        self.assertIn(events[1]["type"], {"categorise", "compare"})
-        self.assertEqual(events[1]["actorId"], bot.id)
+        self.assertEqual(room.phase, "action")
+
+        next_events = server.run_bot_turn(room, bot)
+
+        self.assertEqual(len(next_events), 1)
+        self.assertIn(next_events[0]["type"], {"categorise", "compare"})
+        self.assertEqual(next_events[0]["actorId"], bot.id)
 
     def test_multi_match_series_waits_until_final_match_for_awards(self):
         first = server.create_player("Alice", "cyan", 0)
