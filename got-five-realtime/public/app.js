@@ -54,17 +54,28 @@ const ui = {
 };
 
 const NativePeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+const NativeAudioContext = window.AudioContext || window.webkitAudioContext;
 const voiceChat = {
-  supported: Boolean(navigator.mediaDevices?.getUserMedia && NativePeerConnection),
+  supported: Boolean(navigator.mediaDevices?.getUserMedia && NativeAudioContext),
+  mode: "relay",
   active: false,
   muted: false,
   starting: false,
   localStream: null,
+  inputContext: null,
+  playbackContext: null,
+  sourceNode: null,
+  processorNode: null,
+  packetSeq: 0,
+  remoteNextTime: new Map(),
+  lastVoicePacketAt: new Map(),
   peers: new Map(),
   remoteAudio: new Map(),
   pendingCandidates: new Map(),
 };
 const VOICE_ICE_SERVERS = [{ urls: "stun:stun.l.google.com:19302" }];
+const VOICE_RELAY_SAMPLE_RATE = 16000;
+const VOICE_RELAY_BUFFER_SIZE = 4096;
 
 let pendingServerRender = null;
 
@@ -589,6 +600,10 @@ function connect() {
     }
     if (packet.event === "voiceSignal") {
       handleVoiceSignal(packet.data);
+      return;
+    }
+    if (packet.event === "voicePacket") {
+      handleVoicePacket(packet.data);
       return;
     }
     if (packet.event === "markUpdated") {
@@ -2192,11 +2207,12 @@ async function startVoiceChat() {
     voiceChat.localStream = stream;
     voiceChat.active = true;
     voiceChat.muted = false;
+    await startRelayVoice(stream);
     send("voiceState", { enabled: true });
-    await reconcileVoicePeers();
     showToast("เข้าห้องเสียงแล้ว");
   } catch (error) {
     console.warn("Voice chat failed", error);
+    stopVoiceChat(false);
     showToast("เปิดไมค์ไม่ได้ กรุณาอนุญาตสิทธิ์ไมโครโฟน");
   } finally {
     voiceChat.starting = false;
@@ -2216,6 +2232,7 @@ function setVoiceMuted(muted) {
 }
 
 function stopVoiceChat(notifyServer = true) {
+  stopRelayVoice();
   for (const peerId of Array.from(voiceChat.peers.keys())) {
     closeVoicePeer(peerId);
   }
@@ -2226,12 +2243,153 @@ function stopVoiceChat(notifyServer = true) {
   voiceChat.active = false;
   voiceChat.muted = false;
   voiceChat.starting = false;
+  voiceChat.remoteNextTime.clear();
+  voiceChat.lastVoicePacketAt.clear();
   voiceChat.pendingCandidates.clear();
   if (notifyServer) send("voiceState", { enabled: false });
   render();
 }
 
+async function startRelayVoice(stream) {
+  stopRelayVoice();
+  const inputContext = new NativeAudioContext();
+  const playbackContext = new NativeAudioContext();
+  voiceChat.inputContext = inputContext;
+  voiceChat.playbackContext = playbackContext;
+  await Promise.all([
+    inputContext.resume?.() || Promise.resolve(),
+    playbackContext.resume?.() || Promise.resolve(),
+  ]);
+  const source = inputContext.createMediaStreamSource(stream);
+  const processor = inputContext.createScriptProcessor(VOICE_RELAY_BUFFER_SIZE, 1, 1);
+  voiceChat.sourceNode = source;
+  voiceChat.processorNode = processor;
+  processor.onaudioprocess = (event) => {
+    if (!voiceChat.active || voiceChat.muted || !ui.connected) return;
+    const input = event.inputBuffer.getChannelData(0);
+    const output = event.outputBuffer.getChannelData(0);
+    output.fill(0);
+    const samples = downsampleVoice(input, inputContext.sampleRate, VOICE_RELAY_SAMPLE_RATE);
+    const chunk = encodeVoicePcm16(samples);
+    if (!chunk) return;
+    send("voicePacket", {
+      sequence: voiceChat.packetSeq++,
+      sampleRate: VOICE_RELAY_SAMPLE_RATE,
+      chunk,
+    });
+  };
+  source.connect(processor);
+  processor.connect(inputContext.destination);
+}
+
+function stopRelayVoice() {
+  if (voiceChat.processorNode) {
+    voiceChat.processorNode.onaudioprocess = null;
+    try { voiceChat.processorNode.disconnect(); } catch {}
+  }
+  if (voiceChat.sourceNode) {
+    try { voiceChat.sourceNode.disconnect(); } catch {}
+  }
+  if (voiceChat.inputContext && voiceChat.inputContext.state !== "closed") {
+    voiceChat.inputContext.close().catch(() => {});
+  }
+  if (voiceChat.playbackContext && voiceChat.playbackContext.state !== "closed") {
+    voiceChat.playbackContext.close().catch(() => {});
+  }
+  voiceChat.inputContext = null;
+  voiceChat.playbackContext = null;
+  voiceChat.sourceNode = null;
+  voiceChat.processorNode = null;
+}
+
+async function handleVoicePacket(data) {
+  if (!voiceChat.active || !data?.from || data.from === ui.state?.me?.id || !data.chunk) return;
+  const context = await ensureVoicePlaybackContext();
+  if (!context) return;
+  const sampleRate = Math.max(8000, Math.min(48000, Number(data.sampleRate) || VOICE_RELAY_SAMPLE_RATE));
+  const samples = decodeVoicePcm16(String(data.chunk));
+  if (!samples.length) return;
+  const buffer = context.createBuffer(1, samples.length, sampleRate);
+  buffer.copyToChannel(samples, 0);
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+  source.connect(context.destination);
+  const peerId = data.from;
+  const now = context.currentTime;
+  const startAt = Math.max(now + 0.08, voiceChat.remoteNextTime.get(peerId) || 0);
+  source.start(startAt);
+  voiceChat.remoteNextTime.set(peerId, startAt + buffer.duration);
+  voiceChat.lastVoicePacketAt.set(peerId, Date.now());
+}
+
+async function ensureVoicePlaybackContext() {
+  if (!NativeAudioContext) return null;
+  if (!voiceChat.playbackContext || voiceChat.playbackContext.state === "closed") {
+    voiceChat.playbackContext = new NativeAudioContext();
+  }
+  if (voiceChat.playbackContext.state === "suspended") {
+    await voiceChat.playbackContext.resume().catch(() => {});
+  }
+  return voiceChat.playbackContext;
+}
+
+function downsampleVoice(input, sourceRate, targetRate) {
+  if (!input?.length) return new Float32Array();
+  if (!sourceRate || sourceRate === targetRate) return new Float32Array(input);
+  const ratio = sourceRate / targetRate;
+  const length = Math.max(1, Math.floor(input.length / ratio));
+  const result = new Float32Array(length);
+  for (let i = 0; i < length; i += 1) {
+    const start = Math.floor(i * ratio);
+    const end = Math.min(input.length, Math.floor((i + 1) * ratio));
+    let sum = 0;
+    let count = 0;
+    for (let j = start; j < end; j += 1) {
+      sum += input[j];
+      count += 1;
+    }
+    result[i] = count ? sum / count : input[start] || 0;
+  }
+  return result;
+}
+
+function encodeVoicePcm16(samples) {
+  if (!samples?.length) return "";
+  const bytes = new Uint8Array(samples.length * 2);
+  const view = new DataView(bytes.buffer);
+  for (let i = 0; i < samples.length; i += 1) {
+    const clamped = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(i * 2, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
+  }
+  let binary = "";
+  const step = 0x8000;
+  for (let i = 0; i < bytes.length; i += step) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + step));
+  }
+  return btoa(binary);
+}
+
+function decodeVoicePcm16(chunk) {
+  try {
+    const binary = atob(chunk);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const view = new DataView(bytes.buffer);
+    const samples = new Float32Array(Math.floor(bytes.length / 2));
+    for (let i = 0; i < samples.length; i += 1) {
+      samples[i] = view.getInt16(i * 2, true) / 0x8000;
+    }
+    return samples;
+  } catch (error) {
+    console.warn("Voice packet decode failed", error);
+    return new Float32Array();
+  }
+}
+
 async function reconcileVoicePeers() {
+  if (voiceChat.mode === "relay") return;
   if (!voiceChat.active || !ui.state?.players?.length) return;
   const me = getMe();
   if (!me) return;

@@ -1469,6 +1469,35 @@ def handle_voice_signal(client: Client, data: dict[str, Any]) -> None:
             target_client.send("voiceSignal", payload)
 
 
+def handle_voice_packet(client: Client, data: dict[str, Any]) -> None:
+    room = require_room(client)
+    sender = require_player(room, client)
+    if sender.kind != "human" or not sender.connected:
+        return
+    if not sender.voice_enabled:
+        sender.voice_enabled = True
+    chunk = str(data.get("chunk") or "")
+    if not chunk or len(chunk) > 24000:
+        return
+    sample_rate = safe_int(data.get("sampleRate"), 16000)
+    if sample_rate < 8000 or sample_rate > 48000:
+        sample_rate = 16000
+    sequence = safe_int(data.get("sequence"), 0)
+    payload = {
+        "from": sender.id,
+        "sequence": sequence,
+        "sampleRate": sample_rate,
+        "chunk": chunk,
+        "sentAt": now_ms(),
+    }
+    for target_client in list(room.clients):
+        if not target_client.alive or target_client.player_id == sender.id:
+            continue
+        target = get_player(room, target_client.player_id)
+        if target and target.kind == "human" and target.voice_enabled:
+            target_client.send("voicePacket", payload)
+
+
 def handle_start_game(client: Client) -> None:
     room = require_room(client)
     player = require_player(room, client)
@@ -1640,6 +1669,8 @@ def handle_message(client: Client, message: str) -> None:
                 handle_voice_state(client, data)
             elif event == "voiceSignal":
                 handle_voice_signal(client, data)
+            elif event == "voicePacket":
+                handle_voice_packet(client, data)
             elif event == "gotFive":
                 handle_guess(client, data)
             elif event == "ping":

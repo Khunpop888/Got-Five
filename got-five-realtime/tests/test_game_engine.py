@@ -439,13 +439,17 @@ class GameEngineTests(unittest.TestCase):
             server.ROOMS[lookup] = room
             try:
                 server.handle_voice_state(alice_client, {"enabled": True})
+                server.handle_voice_state(bob_client, {"enabled": True})
                 server.handle_voice_signal(alice_client, {"to": bob.id, "signal": {"type": "offer", "sdp": {"type": "offer", "sdp": "x"}}})
+                server.handle_voice_packet(alice_client, {"chunk": "AA==", "sampleRate": 16000, "sequence": 1})
             finally:
                 server.ROOMS.pop(lookup, None)
 
         self.assertTrue(alice.voice_enabled)
         self.assertTrue(any(event == "voiceSignal" for event, _data in bob_client.sent))
+        self.assertTrue(any(event == "voicePacket" for event, _data in bob_client.sent))
         self.assertFalse(any(event == "voiceSignal" for event, _data in alice_client.sent))
+        self.assertFalse(any(event == "voicePacket" for event, _data in alice_client.sent))
 
     def test_avatar_sanitizer_accepts_small_safe_images_only(self):
         raw = base64.b64encode(b"small-avatar").decode("ascii")
