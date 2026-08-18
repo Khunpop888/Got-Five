@@ -1376,6 +1376,36 @@ def handle_remove_bot(client: Client, data: dict[str, Any]) -> None:
     broadcast_room(room)
 
 
+def handle_kick_player(client: Client, data: dict[str, Any]) -> None:
+    room = require_room(client)
+    player = require_player(room, client)
+    if player.id != room.host_id:
+        raise GameError("เฉพาะเจ้าของห้องเท่านั้น")
+    if room.status != "lobby":
+        raise GameError("เตะผู้เล่นได้เฉพาะใน Lobby")
+    target_id = str(data.get("playerId", ""))
+    target = get_player(room, target_id)
+    if not target:
+        raise GameError("ไม่พบผู้เล่น")
+    if target.id == room.host_id:
+        raise GameError("เตะเจ้าของห้องไม่ได้")
+
+    target_clients = [item for item in list(room.clients) if item.player_id == target.id]
+    room.players = [item for item in room.players if item.id != target.id]
+    for seat, item in enumerate(room.players):
+        item.seat = seat
+    room.revision += 1
+    add_log(room, "system", None, f"{target.name} ถูกเตะออกจากห้อง")
+
+    for target_client in target_clients:
+        target_client.send("kicked", {"message": "คุณถูกเจ้าของห้องเตะออกจากห้อง"})
+        room.clients.discard(target_client)
+        target_client.room_code = None
+        target_client.player_id = None
+
+    broadcast_room(room)
+
+
 def handle_start_game(client: Client) -> None:
     room = require_room(client)
     player = require_player(room, client)
@@ -1527,6 +1557,8 @@ def handle_message(client: Client, message: str) -> None:
                 handle_add_bot(client)
             elif event == "removeBot":
                 handle_remove_bot(client, data)
+            elif event == "kickPlayer":
+                handle_kick_player(client, data)
             elif event == "startGame":
                 handle_start_game(client)
             elif event == "nextMatch":
@@ -1582,7 +1614,7 @@ def maybe_schedule_bot_turn(room: Room) -> None:
                 end_turn(room, count_turn=False)
                 broadcast_room(room)
 
-    timer = threading.Timer(1.2, run_bot)
+    timer = threading.Timer(5.0, run_bot)
     timer.daemon = True
     room.bot_timers.append(timer)
     timer.start()

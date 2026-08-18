@@ -32,6 +32,395 @@
   --glow-pink: 0 0 22px rgba(240, 20, 85, 0.3);
 }
 
+/* MOBILE PRIORITY FIT:
+   Uses !important because this stylesheet intentionally has several older
+   mobile passes later in the file. Keep this block near the top so it is easy
+   to find, while still winning the cascade on phones. */
+@media (max-width: 560px) {
+  body[data-view="game"] {
+    overflow-y: auto !important;
+  }
+
+  .game-screen {
+    gap: 4px !important;
+    padding: 4px !important;
+    overflow: visible !important;
+  }
+
+  .topbar {
+    min-height: 0 !important;
+    padding: 5px 6px !important;
+    gap: 4px !important;
+  }
+
+  .topbar h1 {
+    font-size: 24px !important;
+    line-height: 0.92 !important;
+  }
+
+  .topbar-meta {
+    gap: 4px !important;
+  }
+
+  .topbar-meta .small-pill {
+    min-height: 22px !important;
+    padding: 3px 7px !important;
+    font-size: 10px !important;
+    max-width: 126px !important;
+  }
+
+  .topbar-actions {
+    gap: 4px !important;
+  }
+
+  .topbar-actions .btn {
+    min-height: 28px !important;
+    padding: 4px 3px !important;
+    border-radius: 7px !important;
+    font-size: 10px !important;
+  }
+
+  .turn-spotlight {
+    min-height: 0 !important;
+    padding: 7px !important;
+    gap: 6px !important;
+  }
+
+  .turn-avatar {
+    width: 43px !important;
+    height: 43px !important;
+  }
+
+  .turn-task {
+    font-size: clamp(19px, 6vw, 26px) !important;
+    line-height: 1.04 !important;
+  }
+
+  .turn-speed {
+    display: none !important;
+  }
+
+  .main-grid {
+    gap: 5px !important;
+    overflow: visible !important;
+  }
+
+  .table-zone {
+    display: grid !important;
+    grid-template-columns: minmax(82px, 0.46fr) minmax(0, 1.54fr) !important;
+    grid-template-areas:
+      "opponents opponents"
+      "draw clue"
+      "rack rack" !important;
+    gap: 5px !important;
+    overflow: visible !important;
+  }
+
+  .opponents-grid {
+    grid-area: opponents !important;
+    display: flex !important;
+    gap: 5px !important;
+    padding: 1px 1px 3px !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    scroll-snap-type: x proximity !important;
+  }
+
+  .opponents-grid .seat-card {
+    flex: 0 0 calc(50% - 3px) !important;
+    min-height: 120px !important;
+    padding: 6px !important;
+    overflow: visible !important;
+  }
+
+  .opponents-grid .seat-head {
+    margin-bottom: 4px !important;
+    gap: 5px !important;
+  }
+
+  .opponents-grid .avatar.small {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 13px !important;
+  }
+
+  .opponents-grid .seat-title h2 {
+    font-size: 17px !important;
+    line-height: 1 !important;
+  }
+
+  .opponents-grid .seat-meta {
+    gap: 3px !important;
+    margin-top: 2px !important;
+  }
+
+  .opponents-grid .seat-meta .small-pill {
+    min-height: 20px !important;
+    padding: 2px 6px !important;
+    font-size: 9px !important;
+  }
+
+  .opponents-grid .rack-rail {
+    padding-top: 18px !important;
+  }
+
+  .opponents-grid .rack-track.opponent {
+    min-height: 60px !important;
+    gap: 2px !important;
+    padding: 5px !important;
+  }
+
+  .rack-track.opponent .notch {
+    min-height: 45px !important;
+  }
+
+  .rack-track.opponent .tile-holder {
+    min-height: 56px !important;
+  }
+
+  .rack-track.opponent .tile.small {
+    min-width: 18px !important;
+    max-width: 28px !important;
+    height: 43px !important;
+    padding: 3px 1px !important;
+    border-radius: 6px !important;
+  }
+
+  .rack-track.opponent .tile.small .tile-number {
+    font-size: 13px !important;
+  }
+
+  .rack-track.opponent .tile.mini {
+    width: 18px !important;
+    height: 23px !important;
+    padding: 1px !important;
+  }
+
+  .rack-track.opponent .tile.mini .tile-number {
+    font-size: 9px !important;
+  }
+
+  .rack-track.opponent .compare-stack {
+    width: 62px !important;
+    min-height: 24px !important;
+    bottom: calc(100% + 2px) !important;
+    gap: 1px !important;
+  }
+
+  .tool-panel.step-one,
+  .tool-panel.step-two,
+  .own-rack-panel {
+    padding: 5px !important;
+  }
+
+  .tool-panel.step-one {
+    grid-area: draw !important;
+  }
+
+  .tool-panel.step-two {
+    grid-area: clue !important;
+    grid-template-rows: auto 58px 31px !important;
+  }
+
+  .own-rack-panel {
+    grid-area: rack !important;
+    min-height: 0 !important;
+  }
+
+  .step-panel .tool-head,
+  .own-rack-panel .tool-head {
+    min-height: 0 !important;
+    margin-bottom: 4px !important;
+    gap: 5px !important;
+  }
+
+  .step-panel .tool-head h2,
+  .own-rack-panel .tool-head h2 {
+    font-size: 17px !important;
+    line-height: 1.05 !important;
+  }
+
+  .step-number {
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 12px !important;
+  }
+
+  .tool-panel.step-one .step-state,
+  .tool-panel.step-one .status-pill,
+  .tool-panel.step-two .tool-actions {
+    display: none !important;
+  }
+
+  .tool-panel.step-one .draw-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 2px !important;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    height: 48px !important;
+    min-height: 48px !important;
+    padding: 3px 1px !important;
+    border-width: 1px !important;
+    border-radius: 7px !important;
+  }
+
+  .tool-panel.step-one .deck-btn span:first-child {
+    font-size: 8px !important;
+  }
+
+  .tool-panel.step-one .deck-btn span:last-child {
+    padding: 1px 3px !important;
+    font-size: 9px !important;
+  }
+
+  .tool-panel.step-two .center-tiles {
+    height: 58px !important;
+    min-height: 58px !important;
+    gap: 3px !important;
+    padding: 5px !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: clamp(27px, 10vw, 38px) !important;
+    height: 46px !important;
+    padding: 3px 2px !important;
+    border-radius: 7px !important;
+    flex: 0 1 38px !important;
+  }
+
+  .tool-panel.step-two .center-tiles .tile-number {
+    font-size: clamp(14px, 4.8vw, 19px) !important;
+  }
+
+  .tool-panel.step-two .clue-action-grid {
+    margin-top: 3px !important;
+    align-self: end !important;
+  }
+
+  .tool-panel.step-two .clue-action-buttons {
+    width: 100% !important;
+    gap: 5px !important;
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 30px !important;
+    padding: 4px 3px !important;
+    border-radius: 7px !important;
+    font-size: 12px !important;
+  }
+
+  .rack-rail-mine {
+    position: relative !important;
+    display: block !important;
+    overflow-x: visible !important;
+    padding: 0 !important;
+  }
+
+  .rack-rail-mine .rack-scale {
+    position: absolute !important;
+    top: 5px !important;
+    z-index: 3 !important;
+    min-height: 22px !important;
+    padding: 3px 7px !important;
+    font-size: 11px !important;
+  }
+
+  .rack-rail-mine .rack-scale-low {
+    left: 5px !important;
+  }
+
+  .rack-rail-mine .rack-scale-high {
+    right: 5px !important;
+  }
+
+  .rack-track.mine {
+    width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: repeat(11, minmax(0, 1fr)) !important;
+    gap: 2px !important;
+    padding: 30px 4px 6px !important;
+    min-height: 92px !important;
+  }
+
+  .rack-track.mine .notch {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 52px !important;
+    align-self: end !important;
+    border-radius: 7px !important;
+  }
+
+  .rack-track.mine .tile-holder {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 60px !important;
+    grid-template-rows: minmax(18px, auto) auto !important;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 29px) !important;
+    height: 50px !important;
+    padding: 3px 1px !important;
+    border-radius: 7px !important;
+  }
+
+  .rack-track.mine .tile-holder > .tile .tile-number {
+    font-size: 17px !important;
+  }
+
+  .rack-track.mine .tile-holder > .tile.hidden-tile .tile-number {
+    font-size: 21px !important;
+  }
+
+  .rack-track.mine .tile.mini {
+    width: 17px !important;
+    height: 22px !important;
+    padding: 1px !important;
+  }
+
+  .rack-track.mine .tile.mini .tile-number {
+    font-size: 8px !important;
+  }
+
+  .rack-track.mine .compare-stack {
+    min-height: 22px !important;
+    max-height: 25px !important;
+    align-content: flex-end !important;
+    gap: 1px !important;
+  }
+
+  .rack-track.mine .secret-note {
+    left: 3px !important;
+    right: 3px !important;
+    bottom: 4px !important;
+    height: 15px !important;
+    font-size: 8px !important;
+  }
+
+  .board-panel {
+    padding: 7px !important;
+  }
+
+  .private-board-grid .board-cell {
+    min-height: clamp(26px, 6.7vw, 34px) !important;
+  }
+
+  .log-panel {
+    max-height: 190px !important;
+    overflow: hidden !important;
+  }
+
+  .log-list {
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+}
+
 /* Mobile layout balance pass: approved after mockup v3.
    Keeps the board compact, gives Step 2 more room than Draw, and prevents
    rack/header horizontal overflow on narrow phones. */
@@ -423,6 +812,1060 @@
     overflow-y: auto;
     padding-right: 6px;
     -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* FINAL MOBILE FIT 2026-08-18:
+   The game screen must stay playable on portrait phones without making the
+   personal deduction board bigger. This is intentionally at EOF. */
+@media (max-width: 560px) {
+  body[data-view="game"] {
+    min-height: 100%;
+    overflow-y: auto;
+  }
+
+  .game-screen {
+    min-height: 100dvh;
+    gap: 4px;
+    padding: 4px;
+    overflow: visible;
+  }
+
+  .topbar {
+    min-height: 0;
+    padding: 5px 6px;
+    gap: 4px;
+    border-width: 2px;
+  }
+
+  .topbar h1 {
+    font-size: 24px;
+    line-height: 0.92;
+  }
+
+  .topbar-meta {
+    gap: 4px;
+    padding-bottom: 1px;
+  }
+
+  .topbar-meta .small-pill {
+    min-height: 22px;
+    padding: 3px 7px;
+    font-size: 10px;
+    max-width: 126px;
+  }
+
+  .topbar-actions {
+    gap: 4px;
+  }
+
+  .topbar-actions .btn {
+    min-height: 28px;
+    padding: 4px 3px;
+    border-radius: 7px;
+    font-size: 10px;
+  }
+
+  .turn-spotlight {
+    min-height: 0;
+    padding: 7px;
+    gap: 6px;
+    border-width: 2px;
+  }
+
+  .turn-person {
+    gap: 7px;
+  }
+
+  .turn-avatar {
+    width: 43px;
+    height: 43px;
+  }
+
+  .turn-kicker {
+    font-size: 10px;
+  }
+
+  .turn-task {
+    font-size: clamp(19px, 6vw, 26px);
+    line-height: 1.04;
+  }
+
+  .turn-person small {
+    font-size: 11px;
+    line-height: 1.15;
+  }
+
+  .turn-meter {
+    padding: 5px 7px;
+    min-width: 70px;
+  }
+
+  .turn-meter span {
+    font-size: 9px;
+  }
+
+  .turn-meter b {
+    font-size: 18px;
+  }
+
+  .turn-speed {
+    display: none;
+  }
+
+  .main-grid {
+    gap: 5px;
+    overflow: visible;
+  }
+
+  .table-zone {
+    display: grid;
+    grid-template-columns: minmax(82px, 0.46fr) minmax(0, 1.54fr);
+    grid-template-areas:
+      "opponents opponents"
+      "draw clue"
+      "rack rack";
+    gap: 5px;
+    overflow: visible;
+  }
+
+  .opponents-grid {
+    grid-area: opponents;
+    display: flex;
+    gap: 5px;
+    padding: 1px 1px 3px;
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .opponents-grid .seat-card {
+    flex: 0 0 calc(50% - 3px);
+    min-height: 120px;
+    padding: 6px;
+    overflow: visible;
+    scroll-snap-align: start;
+  }
+
+  .opponents-grid .seat-head {
+    margin-bottom: 4px;
+    gap: 5px;
+  }
+
+  .opponents-grid .avatar.small {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+
+  .opponents-grid .seat-title h2 {
+    font-size: 17px;
+    line-height: 1;
+  }
+
+  .opponents-grid .seat-meta {
+    gap: 3px;
+    margin-top: 2px;
+  }
+
+  .opponents-grid .seat-meta .small-pill {
+    min-height: 20px;
+    padding: 2px 6px;
+    font-size: 9px;
+  }
+
+  .opponents-grid .rack-rail {
+    padding-top: 18px;
+  }
+
+  .opponents-grid .rack-track.opponent {
+    min-height: 60px;
+    gap: 2px;
+    padding: 5px;
+  }
+
+  .rack-track.opponent .notch {
+    min-height: 45px;
+    padding: 2px 1px;
+  }
+
+  .rack-track.opponent .tile-holder {
+    min-height: 56px;
+  }
+
+  .rack-track.opponent .tile.small {
+    min-width: 18px;
+    max-width: 28px;
+    height: 43px;
+    padding: 3px 1px;
+    border-radius: 6px;
+  }
+
+  .rack-track.opponent .tile.small .tile-number {
+    font-size: 13px;
+  }
+
+  .rack-track.opponent .tile.mini {
+    width: 18px;
+    height: 23px;
+    padding: 1px;
+    border-radius: 5px;
+  }
+
+  .rack-track.opponent .tile.mini .tile-number {
+    font-size: 9px;
+  }
+
+  .rack-track.opponent .compare-stack {
+    width: 62px;
+    min-height: 24px;
+    bottom: calc(100% + 2px);
+    gap: 1px;
+  }
+
+  .tool-panel.step-one,
+  .tool-panel.step-two,
+  .own-rack-panel {
+    padding: 5px;
+    border-width: 2px;
+  }
+
+  .step-panel .tool-head,
+  .own-rack-panel .tool-head {
+    min-height: 0;
+    margin-bottom: 4px;
+    gap: 5px;
+  }
+
+  .step-panel .tool-head h2,
+  .own-rack-panel .tool-head h2 {
+    font-size: 17px;
+    line-height: 1.05;
+  }
+
+  .step-number {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+  }
+
+  .tool-panel.step-one .step-state,
+  .tool-panel.step-one .status-pill,
+  .tool-panel.step-two .tool-actions {
+    display: none;
+  }
+
+  .tool-panel.step-one .draw-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    height: 48px;
+    min-height: 48px;
+    padding: 3px 1px;
+    border-width: 1px;
+    border-radius: 7px;
+    box-shadow:
+      0 2px 0 color-mix(in srgb, var(--tile-bg) 55%, #111827),
+      0 5px 8px rgba(15, 23, 42, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.58),
+      inset 0 -6px 9px rgba(0, 0, 0, 0.22);
+  }
+
+  .tool-panel.step-one .deck-btn span:first-child {
+    font-size: 8px;
+    line-height: 1;
+    word-break: keep-all;
+  }
+
+  .tool-panel.step-one .deck-btn span:last-child {
+    padding: 1px 3px;
+    font-size: 9px;
+  }
+
+  .tool-panel.step-two {
+    grid-template-rows: auto 58px 31px;
+  }
+
+  .tool-panel.step-two .center-tiles {
+    height: 58px;
+    min-height: 58px;
+    gap: 3px;
+    padding: 5px;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: clamp(27px, 10vw, 38px);
+    height: 46px;
+    padding: 3px 2px;
+    border-radius: 7px;
+    flex: 0 1 38px;
+  }
+
+  .tool-panel.step-two .center-tiles .tile-number {
+    font-size: clamp(14px, 4.8vw, 19px);
+  }
+
+  .tool-panel.step-two .clue-action-grid {
+    margin-top: 3px !important;
+    align-self: end;
+  }
+
+  .tool-panel.step-two .clue-action-buttons {
+    width: 100%;
+    gap: 5px;
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 30px;
+    padding: 4px 3px;
+    border-radius: 7px;
+    font-size: 12px;
+  }
+
+  .own-rack-panel {
+    min-height: 0;
+  }
+
+  .own-rack-panel .status-pill {
+    min-height: 22px;
+    padding: 3px 7px;
+    font-size: 10px;
+  }
+
+  .rack-rail-mine {
+    position: relative;
+    display: block;
+    overflow-x: visible;
+    padding: 0;
+  }
+
+  .rack-rail-mine .rack-scale {
+    position: absolute;
+    top: 5px;
+    z-index: 3;
+    min-height: 22px;
+    padding: 3px 7px;
+    font-size: 11px;
+    border-width: 2px;
+  }
+
+  .rack-rail-mine .rack-scale-low {
+    left: 5px;
+  }
+
+  .rack-rail-mine .rack-scale-high {
+    right: 5px;
+  }
+
+  .rack-track.mine {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(11, minmax(0, 1fr));
+    gap: 2px;
+    padding: 30px 4px 6px;
+    min-height: 92px;
+  }
+
+  .rack-track.mine .notch {
+    width: 100%;
+    min-width: 0;
+    min-height: 52px;
+    align-self: end;
+    border-radius: 7px;
+  }
+
+  .rack-track.mine .tile-holder {
+    width: 100%;
+    min-width: 0;
+    min-height: 60px;
+    grid-template-rows: minmax(18px, auto) auto;
+    align-items: end;
+    justify-items: center;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 29px);
+    height: 50px;
+    padding: 3px 1px;
+    border-radius: 7px;
+  }
+
+  .rack-track.mine .tile-holder > .tile .tile-number {
+    font-size: 17px;
+  }
+
+  .rack-track.mine .tile-holder > .tile.hidden-tile .tile-number {
+    font-size: 21px;
+  }
+
+  .rack-track.mine .tile.mini {
+    width: 17px;
+    height: 22px;
+    padding: 1px;
+  }
+
+  .rack-track.mine .tile.mini .tile-number {
+    font-size: 8px;
+  }
+
+  .rack-track.mine .compare-stack {
+    min-height: 22px;
+    max-height: 25px;
+    align-content: flex-end;
+    gap: 1px;
+  }
+
+  .rack-track.mine .secret-note {
+    left: 3px;
+    right: 3px;
+    bottom: 4px;
+    height: 15px;
+    font-size: 8px;
+  }
+
+  .side-stack {
+    overflow: visible;
+  }
+
+  .board-panel {
+    padding: 7px;
+  }
+
+  .board-panel .tool-head {
+    margin-bottom: 5px;
+  }
+
+  .private-board-grid {
+    gap: 1px;
+  }
+
+  .private-board-grid .board-cell {
+    min-height: clamp(26px, 6.7vw, 34px);
+  }
+
+  .log-panel {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    max-height: 190px;
+    overflow: hidden;
+  }
+
+  .log-list {
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    padding-right: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* FINAL: real-phone tightening and lobby kick styling. Keep at EOF. */
+.btn.danger-lite {
+  color: #b91c1c;
+  border-color: rgba(239, 68, 68, 0.45);
+  background: linear-gradient(135deg, rgba(254, 242, 242, 0.98), rgba(255, 255, 255, 0.96));
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    padding: 5px 7px;
+  }
+
+  .topbar h1 {
+    font-size: 25px;
+  }
+
+  .topbar-actions .btn {
+    min-height: 28px;
+    font-size: 10px;
+  }
+
+  .turn-spotlight {
+    padding: 6px 7px;
+    gap: 6px;
+  }
+
+  .turn-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .turn-person {
+    gap: 7px;
+  }
+
+  .turn-kicker {
+    margin-bottom: 1px;
+    font-size: 11px;
+  }
+
+  .turn-person strong {
+    font-size: 18px;
+  }
+
+  .turn-person small {
+    display: none;
+  }
+
+  .turn-meter {
+    padding: 4px 7px;
+  }
+
+  .turn-meter b {
+    font-size: 20px;
+  }
+
+  .turn-speed {
+    display: none;
+  }
+
+  .table-zone {
+    grid-template-columns: minmax(86px, 0.55fr) minmax(0, 1.45fr);
+    gap: 5px;
+  }
+
+  .opponents-grid .seat-card {
+    flex-basis: min(88vw, 344px);
+    min-height: 122px;
+    padding: 6px;
+  }
+
+  .opponents-grid .rack-rail {
+    padding-top: 14px;
+  }
+
+  .opponents-grid .rack-track.opponent {
+    min-height: 58px;
+    padding: 5px;
+  }
+
+  .rack-track.opponent .notch {
+    min-height: 44px;
+  }
+
+  .rack-track.opponent .tile-holder {
+    min-height: 55px;
+  }
+
+  .rack-track.opponent .tile.small {
+    max-width: 31px;
+    height: 44px;
+  }
+
+  .tool-panel.step-one,
+  .tool-panel.step-two {
+    padding: 5px;
+  }
+
+  .game-screen .tool-panel.step-panel.is-active-step {
+    border-width: 3px;
+    border-top-width: 4px;
+    box-shadow:
+      0 0 0 2px rgba(250, 204, 21, 0.72),
+      0 0 20px rgba(239, 68, 68, 0.28),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.82);
+  }
+
+  .tool-panel.step-panel.is-active-step .tool-head {
+    min-height: 25px;
+    margin: -3px -3px 3px;
+    padding: 3px 5px;
+    border-radius: 0 0 7px 7px;
+  }
+
+  .tool-panel.step-one .tool-head,
+  .tool-panel.step-two .tool-head {
+    margin-bottom: 3px;
+  }
+
+  .step-panel .tool-head h2 {
+    gap: 5px;
+    font-size: 16px;
+  }
+
+  .step-number {
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+  }
+
+  .tool-panel.step-one .step-state,
+  .tool-panel.step-one .status-pill {
+    display: none;
+  }
+
+  .tool-panel.step-one .draw-grid {
+    gap: 2px;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    height: 47px;
+    min-height: 47px;
+    padding: 3px 1px;
+    border-radius: 6px;
+  }
+
+  .tool-panel.step-one .deck-btn span:first-child {
+    font-size: 8px;
+  }
+
+  .tool-panel.step-one .deck-btn span:last-child {
+    padding: 1px 3px;
+    font-size: 9px;
+  }
+
+  .tool-panel.step-two {
+    grid-template-rows: auto 58px 30px;
+  }
+
+  .tool-panel.step-two .center-tiles {
+    height: 58px;
+    min-height: 58px;
+    gap: 3px;
+    padding: 5px;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: clamp(25px, 8vw, 32px);
+    height: clamp(38px, 11vw, 46px);
+    padding: 3px 2px;
+  }
+
+  .tool-panel.step-two .center-tiles .tile-number {
+    font-size: clamp(13px, 4.3vw, 17px);
+  }
+
+  .tool-panel.step-two .clue-action-grid {
+    margin-top: 3px !important;
+    min-height: 30px;
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 30px;
+    padding: 4px 3px;
+    font-size: 11px;
+  }
+
+  .own-rack-panel {
+    padding: 6px;
+  }
+
+  .own-rack-panel .tool-head {
+    margin-bottom: 3px;
+  }
+
+  .own-rack-panel .tool-head h2 {
+    font-size: 20px;
+  }
+
+  .own-rack-panel .status-pill {
+    min-height: 24px;
+    padding: 3px 7px;
+    font-size: 10px;
+  }
+
+  .rack-rail {
+    padding: 0;
+  }
+
+  .rack-rail-mine {
+    position: relative;
+    display: block;
+  }
+
+  .rack-rail-mine .rack-scale {
+    position: absolute;
+    top: 4px;
+    z-index: 9;
+    min-height: 18px;
+    padding: 2px 6px;
+    font-size: 10px;
+    pointer-events: none;
+  }
+
+  .rack-rail-mine .rack-scale-low {
+    left: 5px;
+  }
+
+  .rack-rail-mine .rack-scale-high {
+    right: 5px;
+  }
+
+  .rack-track.mine {
+    gap: 2px;
+    min-height: 86px;
+    padding: 22px 4px 6px;
+    border-radius: 9px;
+  }
+
+  .rack-track.mine .notch {
+    min-height: 43px;
+    padding: 2px 1px;
+    border-width: 2px;
+    border-radius: 7px;
+  }
+
+  .rack-track.mine .tile-holder {
+    min-height: 68px;
+    grid-template-rows: minmax(20px, auto) auto;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 28px);
+    height: 48px;
+    padding: 3px 2px;
+    border-radius: 7px;
+  }
+
+  .rack-track.mine .tile-holder > .tile .tile-number {
+    font-size: 18px;
+  }
+
+  .rack-track.mine .tile-holder > .tile.hidden-tile .tile-number {
+    font-size: 22px;
+  }
+
+  .rack-track.mine .tile.mini {
+    width: 17px;
+    height: 22px;
+  }
+
+  .rack-track.mine .compare-stack {
+    min-height: 22px;
+    max-height: 26px;
+    margin-bottom: 1px;
+  }
+
+  .rack-track.mine .secret-note {
+    left: 2px;
+    right: 2px;
+    bottom: 4px;
+    height: 15px;
+    font-size: 8px;
+  }
+
+  .board-grid {
+    gap: 3px;
+    padding: 5px;
+  }
+
+  .board-row {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .board-cell {
+    min-height: clamp(27px, 7.1vw, 36px);
+    border-radius: 6px;
+  }
+
+  .board-cell strong {
+    font-size: clamp(10px, 3.15vw, 14px);
+  }
+}
+
+.btn.danger-lite {
+  color: #b91c1c;
+  border-color: rgba(239, 68, 68, 0.45);
+  background: linear-gradient(135deg, rgba(254, 242, 242, 0.98), rgba(255, 255, 255, 0.96));
+}
+
+/* Tighter phone layout after real-device review. */
+@media (max-width: 560px) {
+  .topbar {
+    padding: 5px 7px;
+  }
+
+  .topbar h1 {
+    font-size: 25px;
+  }
+
+  .topbar-actions .btn {
+    min-height: 28px;
+    font-size: 10px;
+  }
+
+  .turn-spotlight {
+    padding: 6px 7px;
+    gap: 6px;
+  }
+
+  .turn-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .turn-person {
+    gap: 7px;
+  }
+
+  .turn-kicker {
+    margin-bottom: 1px;
+    font-size: 11px;
+  }
+
+  .turn-person strong {
+    font-size: 18px;
+  }
+
+  .turn-person small {
+    display: none;
+  }
+
+  .turn-meter {
+    padding: 4px 7px;
+  }
+
+  .turn-meter b {
+    font-size: 20px;
+  }
+
+  .turn-speed {
+    display: none;
+  }
+
+  .table-zone {
+    grid-template-columns: minmax(86px, 0.55fr) minmax(0, 1.45fr);
+    gap: 5px;
+  }
+
+  .opponents-grid .seat-card {
+    flex-basis: min(88vw, 344px);
+    min-height: 122px;
+    padding: 6px;
+  }
+
+  .opponents-grid .rack-rail {
+    padding-top: 14px;
+  }
+
+  .opponents-grid .rack-track.opponent {
+    min-height: 58px;
+    padding: 5px;
+  }
+
+  .rack-track.opponent .notch {
+    min-height: 44px;
+  }
+
+  .rack-track.opponent .tile-holder {
+    min-height: 55px;
+  }
+
+  .rack-track.opponent .tile.small {
+    max-width: 31px;
+    height: 44px;
+  }
+
+  .tool-panel.step-one,
+  .tool-panel.step-two {
+    padding: 5px;
+  }
+
+  .game-screen .tool-panel.step-panel.is-active-step {
+    border-width: 3px;
+    border-top-width: 4px;
+    box-shadow:
+      0 0 0 2px rgba(250, 204, 21, 0.72),
+      0 0 20px rgba(239, 68, 68, 0.28),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.82);
+  }
+
+  .tool-panel.step-panel.is-active-step .tool-head {
+    min-height: 25px;
+    margin: -3px -3px 3px;
+    padding: 3px 5px;
+    border-radius: 0 0 7px 7px;
+  }
+
+  .tool-panel.step-one .tool-head,
+  .tool-panel.step-two .tool-head {
+    margin-bottom: 3px;
+  }
+
+  .step-panel .tool-head h2 {
+    gap: 5px;
+    font-size: 16px;
+  }
+
+  .step-number {
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+  }
+
+  .tool-panel.step-one .draw-grid {
+    gap: 2px;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    height: 47px;
+    min-height: 47px;
+    padding: 3px 1px;
+    border-radius: 6px;
+  }
+
+  .tool-panel.step-one .deck-btn span:first-child {
+    font-size: 8px;
+  }
+
+  .tool-panel.step-one .deck-btn span:last-child {
+    padding: 1px 3px;
+    font-size: 9px;
+  }
+
+  .tool-panel.step-two {
+    grid-template-rows: auto 58px 30px;
+  }
+
+  .tool-panel.step-two .center-tiles {
+    height: 58px;
+    min-height: 58px;
+    gap: 3px;
+    padding: 5px;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: clamp(25px, 8vw, 32px);
+    height: clamp(38px, 11vw, 46px);
+    padding: 3px 2px;
+  }
+
+  .tool-panel.step-two .center-tiles .tile-number {
+    font-size: clamp(13px, 4.3vw, 17px);
+  }
+
+  .tool-panel.step-two .clue-action-grid {
+    margin-top: 3px !important;
+    min-height: 30px;
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 30px;
+    padding: 4px 3px;
+    font-size: 11px;
+  }
+
+  .own-rack-panel {
+    padding: 6px;
+  }
+
+  .own-rack-panel .tool-head {
+    margin-bottom: 3px;
+  }
+
+  .own-rack-panel .tool-head h2 {
+    font-size: 20px;
+  }
+
+  .own-rack-panel .status-pill {
+    min-height: 24px;
+    padding: 3px 7px;
+    font-size: 10px;
+  }
+
+  .rack-rail {
+    padding: 0;
+  }
+
+  .rack-rail-mine {
+    position: relative;
+    display: block;
+  }
+
+  .rack-rail-mine .rack-scale {
+    position: absolute;
+    top: 4px;
+    z-index: 9;
+    min-height: 18px;
+    padding: 2px 6px;
+    font-size: 10px;
+    pointer-events: none;
+  }
+
+  .rack-rail-mine .rack-scale-low {
+    left: 5px;
+  }
+
+  .rack-rail-mine .rack-scale-high {
+    right: 5px;
+  }
+
+  .rack-track.mine {
+    gap: 2px;
+    min-height: 86px;
+    padding: 22px 4px 6px;
+    border-radius: 9px;
+  }
+
+  .rack-track.mine .notch {
+    min-height: 43px;
+    padding: 2px 1px;
+    border-width: 2px;
+    border-radius: 7px;
+  }
+
+  .rack-track.mine .tile-holder {
+    min-height: 68px;
+    grid-template-rows: minmax(20px, auto) auto;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 28px);
+    height: 48px;
+    padding: 3px 2px;
+    border-radius: 7px;
+  }
+
+  .rack-track.mine .tile-holder > .tile .tile-number {
+    font-size: 18px;
+  }
+
+  .rack-track.mine .tile-holder > .tile.hidden-tile .tile-number {
+    font-size: 22px;
+  }
+
+  .rack-track.mine .tile.mini {
+    width: 17px;
+    height: 22px;
+  }
+
+  .rack-track.mine .compare-stack {
+    min-height: 22px;
+    max-height: 26px;
+    margin-bottom: 1px;
+  }
+
+  .rack-track.mine .secret-note {
+    left: 2px;
+    right: 2px;
+    bottom: 4px;
+    height: 15px;
+    font-size: 8px;
+  }
+
+  .board-grid {
+    gap: 3px;
+    padding: 5px;
+  }
+
+  .board-row {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .board-cell {
+    min-height: clamp(27px, 7.1vw, 36px);
+    border-radius: 6px;
+  }
+
+  .board-cell strong {
+    font-size: clamp(10px, 3.15vw, 14px);
   }
 }
 

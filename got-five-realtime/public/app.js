@@ -610,6 +610,20 @@ function connect() {
       render();
       return;
     }
+    if (packet.event === "kicked") {
+      const routeCode = roomCodeFromPath() || ui.state?.room?.code || "";
+      if (routeCode) clearSessionToken(routeCode);
+      ui.state = null;
+      ui.validatingRoom = false;
+      ui.joinCode = routeCode;
+      history.replaceState(null, "", "/");
+      showToast(packet.data?.message || "คุณถูกนำออกจากห้อง");
+      try {
+        ui.socket?.close();
+      } catch {}
+      render();
+      return;
+    }
     if (packet.event === "error") {
       playSound("error");
       const errorMessage = packet.data?.message || "เกิดข้อผิดพลาด";
@@ -1768,9 +1782,12 @@ function rankStatusThai(status) {
 }
 
 function renderLobbyPlayer(player, me) {
-  const remove = me?.isHost && player.kind === "bot"
-    ? `<button class="btn ghost" data-remove-bot="${escapeHtml(player.id)}">ลบ</button>`
-    : `<span class="small-pill">${player.connected ? "Online" : "Offline"}</span>`;
+  let rowAction = `<span class="small-pill">${player.connected ? "Online" : "Offline"}</span>`;
+  if (me?.isHost && player.id !== me.id && !player.isHost) {
+    rowAction = player.kind === "bot"
+      ? `<button class="btn ghost" data-remove-bot="${escapeHtml(player.id)}">ลบ Bot</button>`
+      : `<button class="btn ghost danger-lite" data-kick-player="${escapeHtml(player.id)}">เตะ</button>`;
+  }
   return `
     <div class="player-row" data-player-color="${escapeHtml(player.color)}">
       ${avatarHtml(player, "small")}
@@ -1779,7 +1796,7 @@ function renderLobbyPlayer(player, me) {
         ${player.id === me?.id ? `<span class="helper">คุณ</span>` : ""}
         ${player.isHost ? `<span class="helper">Host</span>` : ""}
       </div>
-      ${remove}
+      ${rowAction}
     </div>
   `;
 }
@@ -1943,6 +1960,10 @@ function bindLobby() {
   bind("#start-game", "click", () => send("startGame"));
   bindAll("[data-remove-bot]", "click", (event) => {
     send("removeBot", { playerId: event.currentTarget.dataset.removeBot });
+  });
+  bindAll("[data-kick-player]", "click", (event) => {
+    if (!window.confirm("เตะผู้เล่นคนนี้ออกจากห้องใช่ไหม?")) return;
+    send("kickPlayer", { playerId: event.currentTarget.dataset.kickPlayer });
   });
 }
 
