@@ -45,6 +45,7 @@ const ui = {
   compareMode: false,
   showCategoriseConfirm: false,
   showGuess: false,
+  guessDraft: null,
   guessResult: null,
   chatDraft: "",
   chatOpen: false,
@@ -644,6 +645,7 @@ function connect() {
     if (packet.event === "guessResult") {
       ui.guessResult = packet.data;
       ui.showGuess = false;
+      ui.guessDraft = null;
       render();
       return;
     }
@@ -687,6 +689,7 @@ function handleRoomExit(message) {
   ui.compareMode = false;
   ui.showCategoriseConfirm = false;
   ui.showGuess = false;
+  ui.guessDraft = null;
   ui.guessResult = null;
   ui.chatOpen = false;
   ui.chatReadCount = 0;
@@ -1424,7 +1427,10 @@ function renderPlayerBadge(player, fallback = "System") {
 }
 
 function renderGuessModal() {
-  const values = [0, 1, 2, 3, 4].map((slot) => getNote(slot));
+  if (!Array.isArray(ui.guessDraft) || ui.guessDraft.length !== 5) {
+    ui.guessDraft = [0, 1, 2, 3, 4].map((slot) => getNote(slot));
+  }
+  const values = ui.guessDraft;
   return `
     <div class="modal-backdrop">
       <section class="modal-card">
@@ -2062,6 +2068,9 @@ function bindGame() {
   });
   bind("#open-guess", "click", () => {
     ui.showGuess = true;
+    if (!Array.isArray(ui.guessDraft) || ui.guessDraft.length !== 5) {
+      ui.guessDraft = [0, 1, 2, 3, 4].map((slot) => getNote(slot));
+    }
     render();
   });
   bindAll("[data-draw]", "click", (event) => {
@@ -2134,12 +2143,20 @@ function bindGame() {
     ui.showGuess = false;
     render();
   });
+  bindAll("[data-guess]", "input", (event) => {
+    if (!Array.isArray(ui.guessDraft) || ui.guessDraft.length !== 5) {
+      ui.guessDraft = ["", "", "", "", ""];
+    }
+    ui.guessDraft[Number(event.target.dataset.guess)] = event.target.value;
+  });
   bind("#submit-guess", "click", () => {
     const guess = Array.from(document.querySelectorAll("[data-guess]")).map((input) => input.value);
+    ui.guessDraft = guess;
     send("gotFive", { guess });
   });
   bind("#close-result", "click", () => {
     ui.guessResult = null;
+    ui.guessDraft = null;
     render();
   });
 }
