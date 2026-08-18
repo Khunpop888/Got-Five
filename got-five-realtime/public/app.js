@@ -1195,7 +1195,7 @@ function renderBoard() {
     rows += `<div class="board-row">${cells}</div>`;
   }
   return `
-    <section class="tool-panel">
+    <section class="tool-panel board-panel">
       <div class="tool-head">
         <h2>Private Board</h2>
         <span id="board-mark-count" class="status-pill">ตัดแล้ว ${marked.size}/60</span>
