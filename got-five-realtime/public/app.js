@@ -1825,6 +1825,7 @@ function rankStatusThai(status) {
 }
 
 function renderVoiceControls() {
+  return "";
   const participants = (ui.state?.players || []).filter((player) => player.voiceEnabled).length;
   if (!voiceChat.supported) {
     return `<span class="voice-pill is-off">เสียงไม่รองรับ</span>`;
