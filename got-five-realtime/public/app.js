@@ -45,7 +45,6 @@ const ui = {
   compareMode: false,
   showCategoriseConfirm: false,
   showGuess: false,
-  guessDraft: null,
   guessResult: null,
   chatDraft: "",
   chatOpen: false,
@@ -53,30 +52,6 @@ const ui = {
   lastEvent: null,
   soundEnabled: SAVED_SOUND_ENABLED,
 };
-
-const NativePeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection;
-const NativeAudioContext = window.AudioContext || window.webkitAudioContext;
-const voiceChat = {
-  supported: Boolean(navigator.mediaDevices?.getUserMedia && NativeAudioContext),
-  mode: "relay",
-  active: false,
-  muted: false,
-  starting: false,
-  localStream: null,
-  inputContext: null,
-  playbackContext: null,
-  sourceNode: null,
-  processorNode: null,
-  packetSeq: 0,
-  remoteNextTime: new Map(),
-  lastVoicePacketAt: new Map(),
-  peers: new Map(),
-  remoteAudio: new Map(),
-  pendingCandidates: new Map(),
-};
-const VOICE_ICE_SERVERS = [{ urls: "stun:stun.l.google.com:19302" }];
-const VOICE_RELAY_SAMPLE_RATE = 16000;
-const VOICE_RELAY_BUFFER_SIZE = 4096;
 
 let pendingServerRender = null;
 
@@ -595,18 +570,6 @@ function connect() {
       return;
     }
     if (packet.event === "connected" || packet.event === "pong") return;
-    if (packet.event === "roomKicked" || packet.event === "roomDeleted") {
-      handleRoomExit(packet.data?.message || "ออกจากห้องแล้ว");
-      return;
-    }
-    if (packet.event === "voiceSignal") {
-      handleVoiceSignal(packet.data);
-      return;
-    }
-    if (packet.event === "voicePacket") {
-      handleVoicePacket(packet.data);
-      return;
-    }
     if (packet.event === "markUpdated") {
       applyMarkUpdate(packet.data);
       return;
@@ -637,7 +600,6 @@ function connect() {
         }, 900);
       }
       reconcileLocalSelection();
-      reconcileVoicePeers().catch((error) => console.warn("Voice reconnect failed", error));
       handleStateAudio(previousState, packet.data, packet.data?.eventData, packet.event);
       scheduleServerRender();
       return;
@@ -645,7 +607,6 @@ function connect() {
     if (packet.event === "guessResult") {
       ui.guessResult = packet.data;
       ui.showGuess = false;
-      ui.guessDraft = null;
       render();
       return;
     }
@@ -678,24 +639,6 @@ function sendHeartbeat() {
   if (!ui.connected || ui.validatingRoom || !ui.state?.room?.code) return;
   if (!ui.socket || ui.socket.readyState !== WebSocket.OPEN) return;
   ui.socket.send(JSON.stringify({ event: "ping", data: {} }));
-}
-
-function handleRoomExit(message) {
-  stopVoiceChat(false);
-  ui.state = null;
-  ui.validatingRoom = false;
-  ui.selectedCenterTileId = null;
-  ui.responderId = null;
-  ui.compareMode = false;
-  ui.showCategoriseConfirm = false;
-  ui.showGuess = false;
-  ui.guessDraft = null;
-  ui.guessResult = null;
-  ui.chatOpen = false;
-  ui.chatReadCount = 0;
-  history.replaceState(null, "", ui.ownerMode ? "/owner" : "/");
-  showToast(message);
-  render();
 }
 
 function handleServerError(message) {
@@ -903,8 +846,6 @@ function renderLobby() {
             <div class="button-row">
               <button id="add-bot" class="btn amber" ${!me?.isHost || s.players.length >= s.room.maxPlayers ? "disabled" : ""}>เพิ่ม Bot</button>
               <button id="start-game" class="btn primary" ${canStart ? "" : "disabled"}>เริ่มเกม</button>
-              ${me?.isHost ? `<button id="delete-room" class="btn danger">ลบห้อง</button>` : ""}
-              ${renderVoiceControls()}
             </div>
             <p class="helper">${me?.isHost ? "เจ้าของห้องเป็นคนเริ่มเกม" : "รอเจ้าของห้องเริ่มเกม"}</p>
           </div>
@@ -948,7 +889,6 @@ function renderGame() {
           </div>
         </div>
         <div class="button-row topbar-actions">
-          ${renderVoiceControls()}
           <button id="copy-invite" class="btn ghost">Copy Invite</button>
           <a class="btn ghost" href="/how-to-play.html" target="_blank" rel="noopener">วิธีเล่น</a>
           ${s.room.status === "playing" && me?.active ? `<button id="open-guess" class="btn rose">GOT FIVE!</button>` : ""}
@@ -1427,10 +1367,7 @@ function renderPlayerBadge(player, fallback = "System") {
 }
 
 function renderGuessModal() {
-  if (!Array.isArray(ui.guessDraft) || ui.guessDraft.length !== 5) {
-    ui.guessDraft = [0, 1, 2, 3, 4].map((slot) => getNote(slot));
-  }
-  const values = ui.guessDraft;
+  const values = [0, 1, 2, 3, 4].map((slot) => getNote(slot));
   return `
     <div class="modal-backdrop">
       <section class="modal-card">
@@ -1830,36 +1767,10 @@ function rankStatusThai(status) {
   return "จบเกม";
 }
 
-function renderVoiceControls() {
-  return "";
-  const participants = (ui.state?.players || []).filter((player) => player.voiceEnabled).length;
-  if (!voiceChat.supported) {
-    return `<span class="voice-pill is-off">เสียงไม่รองรับ</span>`;
-  }
-  const label = !voiceChat.active
-    ? "เข้าห้องเสียง"
-    : voiceChat.muted
-      ? "เปิดไมค์"
-      : "ปิดไมค์";
-  return `
-    <span class="voice-controls">
-      <button id="voice-toggle" class="btn voice-btn ${voiceChat.active ? "is-live" : ""} ${voiceChat.muted ? "is-muted" : ""}" type="button">
-        <span class="voice-dot"></span>
-        ${label}
-        <b>${participants}</b>
-      </button>
-      ${voiceChat.active ? `<button id="voice-leave" class="btn ghost voice-leave" type="button">ออกเสียง</button>` : ""}
-    </span>
-  `;
-}
-
 function renderLobbyPlayer(player, me) {
-  const canManage = me?.isHost && player.id !== me?.id;
-  const remove = canManage && player.kind === "bot"
+  const remove = me?.isHost && player.kind === "bot"
     ? `<button class="btn ghost" data-remove-bot="${escapeHtml(player.id)}">ลบ</button>`
-    : canManage
-      ? `<button class="btn ghost danger-lite" data-kick-player="${escapeHtml(player.id)}">เตะ</button>`
-      : `<span class="small-pill">${player.connected ? "Online" : "Offline"}</span>`;
+    : `<span class="small-pill">${player.connected ? "Online" : "Offline"}</span>`;
   return `
     <div class="player-row" data-player-color="${escapeHtml(player.color)}">
       ${avatarHtml(player, "small")}
@@ -1867,7 +1778,6 @@ function renderLobbyPlayer(player, me) {
         ${escapeHtml(player.name)}
         ${player.id === me?.id ? `<span class="helper">คุณ</span>` : ""}
         ${player.isHost ? `<span class="helper">Host</span>` : ""}
-        ${player.voiceEnabled ? `<span class="helper voice-inline">Voice</span>` : ""}
       </div>
       ${remove}
     </div>
@@ -2010,15 +1920,9 @@ function bindStart() {
   });
 }
 
-function bindVoiceControls() {
-  bind("#voice-toggle", "click", toggleVoiceChat);
-  bind("#voice-leave", "click", () => stopVoiceChat(true));
-}
-
 function bindLobby() {
   bindAvatarControls("lobby", true);
   bind("#copy-invite", "click", copyInvite);
-  bindVoiceControls();
   bind("#save-profile", "click", () => {
     const name = document.querySelector("#lobby-name")?.value || ui.name;
     ui.name = name;
@@ -2037,24 +1941,13 @@ function bindLobby() {
   });
   bind("#add-bot", "click", () => send("addBot"));
   bind("#start-game", "click", () => send("startGame"));
-  bind("#delete-room", "click", () => {
-    if (window.confirm("ลบห้องนี้และให้ทุกคนออกจากห้องใช่ไหม?")) {
-      send("deleteRoom");
-    }
-  });
   bindAll("[data-remove-bot]", "click", (event) => {
     send("removeBot", { playerId: event.currentTarget.dataset.removeBot });
-  });
-  bindAll("[data-kick-player]", "click", (event) => {
-    if (window.confirm("นำผู้เล่นคนนี้ออกจากห้องใช่ไหม?")) {
-      send("kickPlayer", { playerId: event.currentTarget.dataset.kickPlayer });
-    }
   });
 }
 
 function bindGame() {
   bind("#copy-invite", "click", copyInvite);
-  bindVoiceControls();
   bind("#restart-room", "click", () => send("restart"));
   bind("#next-match", "click", () => send("nextMatch"));
   bind("#restart-room-modal", "click", () => send("restart"));
@@ -2068,9 +1961,6 @@ function bindGame() {
   });
   bind("#open-guess", "click", () => {
     ui.showGuess = true;
-    if (!Array.isArray(ui.guessDraft) || ui.guessDraft.length !== 5) {
-      ui.guessDraft = [0, 1, 2, 3, 4].map((slot) => getNote(slot));
-    }
     render();
   });
   bindAll("[data-draw]", "click", (event) => {
@@ -2143,20 +2033,12 @@ function bindGame() {
     ui.showGuess = false;
     render();
   });
-  bindAll("[data-guess]", "input", (event) => {
-    if (!Array.isArray(ui.guessDraft) || ui.guessDraft.length !== 5) {
-      ui.guessDraft = ["", "", "", "", ""];
-    }
-    ui.guessDraft[Number(event.target.dataset.guess)] = event.target.value;
-  });
   bind("#submit-guess", "click", () => {
     const guess = Array.from(document.querySelectorAll("[data-guess]")).map((input) => input.value);
-    ui.guessDraft = guess;
     send("gotFive", { guess });
   });
   bind("#close-result", "click", () => {
     ui.guessResult = null;
-    ui.guessDraft = null;
     render();
   });
 }
@@ -2196,342 +2078,6 @@ function sendChat() {
   if (!message) return;
   ui.chatDraft = "";
   send("chat", { message });
-}
-
-async function toggleVoiceChat() {
-  if (!voiceChat.supported) {
-    showToast("Browser นี้ยังไม่รองรับห้องเสียง");
-    return;
-  }
-  if (!voiceChat.active) {
-    await startVoiceChat();
-    return;
-  }
-  setVoiceMuted(!voiceChat.muted);
-}
-
-async function startVoiceChat() {
-  if (voiceChat.starting || voiceChat.active) return;
-  voiceChat.starting = true;
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-      video: false,
-    });
-    voiceChat.localStream = stream;
-    voiceChat.active = true;
-    voiceChat.muted = false;
-    await startRelayVoice(stream);
-    send("voiceState", { enabled: true });
-    showToast("เข้าห้องเสียงแล้ว");
-  } catch (error) {
-    console.warn("Voice chat failed", error);
-    stopVoiceChat(false);
-    showToast("เปิดไมค์ไม่ได้ กรุณาอนุญาตสิทธิ์ไมโครโฟน");
-  } finally {
-    voiceChat.starting = false;
-    render();
-  }
-}
-
-function setVoiceMuted(muted) {
-  voiceChat.muted = Boolean(muted);
-  if (voiceChat.localStream) {
-    voiceChat.localStream.getAudioTracks().forEach((track) => {
-      track.enabled = !voiceChat.muted;
-    });
-  }
-  showToast(voiceChat.muted ? "ปิดไมค์แล้ว" : "เปิดไมค์แล้ว");
-  render();
-}
-
-function stopVoiceChat(notifyServer = true) {
-  stopRelayVoice();
-  for (const peerId of Array.from(voiceChat.peers.keys())) {
-    closeVoicePeer(peerId);
-  }
-  if (voiceChat.localStream) {
-    voiceChat.localStream.getTracks().forEach((track) => track.stop());
-  }
-  voiceChat.localStream = null;
-  voiceChat.active = false;
-  voiceChat.muted = false;
-  voiceChat.starting = false;
-  voiceChat.remoteNextTime.clear();
-  voiceChat.lastVoicePacketAt.clear();
-  voiceChat.pendingCandidates.clear();
-  if (notifyServer) send("voiceState", { enabled: false });
-  render();
-}
-
-async function startRelayVoice(stream) {
-  stopRelayVoice();
-  const inputContext = new NativeAudioContext();
-  const playbackContext = new NativeAudioContext();
-  voiceChat.inputContext = inputContext;
-  voiceChat.playbackContext = playbackContext;
-  await Promise.all([
-    inputContext.resume?.() || Promise.resolve(),
-    playbackContext.resume?.() || Promise.resolve(),
-  ]);
-  const source = inputContext.createMediaStreamSource(stream);
-  const processor = inputContext.createScriptProcessor(VOICE_RELAY_BUFFER_SIZE, 1, 1);
-  voiceChat.sourceNode = source;
-  voiceChat.processorNode = processor;
-  processor.onaudioprocess = (event) => {
-    if (!voiceChat.active || voiceChat.muted || !ui.connected) return;
-    const input = event.inputBuffer.getChannelData(0);
-    const output = event.outputBuffer.getChannelData(0);
-    output.fill(0);
-    const samples = downsampleVoice(input, inputContext.sampleRate, VOICE_RELAY_SAMPLE_RATE);
-    const chunk = encodeVoicePcm16(samples);
-    if (!chunk) return;
-    send("voicePacket", {
-      sequence: voiceChat.packetSeq++,
-      sampleRate: VOICE_RELAY_SAMPLE_RATE,
-      chunk,
-    });
-  };
-  source.connect(processor);
-  processor.connect(inputContext.destination);
-}
-
-function stopRelayVoice() {
-  if (voiceChat.processorNode) {
-    voiceChat.processorNode.onaudioprocess = null;
-    try { voiceChat.processorNode.disconnect(); } catch {}
-  }
-  if (voiceChat.sourceNode) {
-    try { voiceChat.sourceNode.disconnect(); } catch {}
-  }
-  if (voiceChat.inputContext && voiceChat.inputContext.state !== "closed") {
-    voiceChat.inputContext.close().catch(() => {});
-  }
-  if (voiceChat.playbackContext && voiceChat.playbackContext.state !== "closed") {
-    voiceChat.playbackContext.close().catch(() => {});
-  }
-  voiceChat.inputContext = null;
-  voiceChat.playbackContext = null;
-  voiceChat.sourceNode = null;
-  voiceChat.processorNode = null;
-}
-
-async function handleVoicePacket(data) {
-  if (!voiceChat.active || !data?.from || data.from === ui.state?.me?.id || !data.chunk) return;
-  const context = await ensureVoicePlaybackContext();
-  if (!context) return;
-  const sampleRate = Math.max(8000, Math.min(48000, Number(data.sampleRate) || VOICE_RELAY_SAMPLE_RATE));
-  const samples = decodeVoicePcm16(String(data.chunk));
-  if (!samples.length) return;
-  const buffer = context.createBuffer(1, samples.length, sampleRate);
-  buffer.copyToChannel(samples, 0);
-  const source = context.createBufferSource();
-  source.buffer = buffer;
-  source.connect(context.destination);
-  const peerId = data.from;
-  const now = context.currentTime;
-  const startAt = Math.max(now + 0.08, voiceChat.remoteNextTime.get(peerId) || 0);
-  source.start(startAt);
-  voiceChat.remoteNextTime.set(peerId, startAt + buffer.duration);
-  voiceChat.lastVoicePacketAt.set(peerId, Date.now());
-}
-
-async function ensureVoicePlaybackContext() {
-  if (!NativeAudioContext) return null;
-  if (!voiceChat.playbackContext || voiceChat.playbackContext.state === "closed") {
-    voiceChat.playbackContext = new NativeAudioContext();
-  }
-  if (voiceChat.playbackContext.state === "suspended") {
-    await voiceChat.playbackContext.resume().catch(() => {});
-  }
-  return voiceChat.playbackContext;
-}
-
-function downsampleVoice(input, sourceRate, targetRate) {
-  if (!input?.length) return new Float32Array();
-  if (!sourceRate || sourceRate === targetRate) return new Float32Array(input);
-  const ratio = sourceRate / targetRate;
-  const length = Math.max(1, Math.floor(input.length / ratio));
-  const result = new Float32Array(length);
-  for (let i = 0; i < length; i += 1) {
-    const start = Math.floor(i * ratio);
-    const end = Math.min(input.length, Math.floor((i + 1) * ratio));
-    let sum = 0;
-    let count = 0;
-    for (let j = start; j < end; j += 1) {
-      sum += input[j];
-      count += 1;
-    }
-    result[i] = count ? sum / count : input[start] || 0;
-  }
-  return result;
-}
-
-function encodeVoicePcm16(samples) {
-  if (!samples?.length) return "";
-  const bytes = new Uint8Array(samples.length * 2);
-  const view = new DataView(bytes.buffer);
-  for (let i = 0; i < samples.length; i += 1) {
-    const clamped = Math.max(-1, Math.min(1, samples[i]));
-    view.setInt16(i * 2, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
-  }
-  let binary = "";
-  const step = 0x8000;
-  for (let i = 0; i < bytes.length; i += step) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + step));
-  }
-  return btoa(binary);
-}
-
-function decodeVoicePcm16(chunk) {
-  try {
-    const binary = atob(chunk);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    const view = new DataView(bytes.buffer);
-    const samples = new Float32Array(Math.floor(bytes.length / 2));
-    for (let i = 0; i < samples.length; i += 1) {
-      samples[i] = view.getInt16(i * 2, true) / 0x8000;
-    }
-    return samples;
-  } catch (error) {
-    console.warn("Voice packet decode failed", error);
-    return new Float32Array();
-  }
-}
-
-async function reconcileVoicePeers() {
-  if (voiceChat.mode === "relay") return;
-  if (!voiceChat.active || !ui.state?.players?.length) return;
-  const me = getMe();
-  if (!me) return;
-  const peers = ui.state.players.filter((player) => (
-    player.id !== me.id
-    && player.kind === "human"
-    && player.connected
-    && player.voiceEnabled
-  ));
-  const activePeerIds = new Set(peers.map((player) => player.id));
-  for (const peerId of Array.from(voiceChat.peers.keys())) {
-    if (!activePeerIds.has(peerId)) {
-      closeVoicePeer(peerId);
-    }
-  }
-  for (const peer of peers) {
-    const pc = await ensureVoicePeer(peer.id);
-    if (shouldCreateVoiceOffer(me, peer) && pc.signalingState === "stable" && !pc.localDescription) {
-      await createVoiceOffer(peer.id, pc);
-    }
-  }
-}
-
-function shouldCreateVoiceOffer(me, peer) {
-  const mySeat = Number.isFinite(Number(me.seat)) ? Number(me.seat) : 99;
-  const peerSeat = Number.isFinite(Number(peer.seat)) ? Number(peer.seat) : 99;
-  if (mySeat !== peerSeat) return mySeat < peerSeat;
-  return String(me.id) < String(peer.id);
-}
-
-async function ensureVoicePeer(peerId) {
-  if (voiceChat.peers.has(peerId)) return voiceChat.peers.get(peerId);
-  const pc = new NativePeerConnection({ iceServers: VOICE_ICE_SERVERS });
-  voiceChat.peers.set(peerId, pc);
-  if (voiceChat.localStream) {
-    voiceChat.localStream.getTracks().forEach((track) => pc.addTrack(track, voiceChat.localStream));
-  }
-  pc.addEventListener("icecandidate", (event) => {
-    if (event.candidate) {
-      send("voiceSignal", { to: peerId, signal: { type: "candidate", candidate: event.candidate } });
-    }
-  });
-  pc.addEventListener("track", (event) => {
-    const [stream] = event.streams;
-    if (stream) attachRemoteVoice(peerId, stream);
-  });
-  pc.addEventListener("connectionstatechange", () => {
-    if (["failed", "closed", "disconnected"].includes(pc.connectionState)) {
-      closeVoicePeer(peerId);
-    }
-  });
-  return pc;
-}
-
-async function createVoiceOffer(peerId, pc) {
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  send("voiceSignal", { to: peerId, signal: { type: "offer", sdp: pc.localDescription } });
-}
-
-async function handleVoiceSignal(data) {
-  if (!voiceChat.active || !data?.from || !data?.signal) return;
-  const peerId = data.from;
-  const signal = data.signal;
-  try {
-    const pc = await ensureVoicePeer(peerId);
-    if (signal.type === "offer" && signal.sdp) {
-      await pc.setRemoteDescription(signal.sdp);
-      await flushVoiceCandidates(peerId, pc);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      send("voiceSignal", { to: peerId, signal: { type: "answer", sdp: pc.localDescription } });
-    } else if (signal.type === "answer" && signal.sdp) {
-      await pc.setRemoteDescription(signal.sdp);
-      await flushVoiceCandidates(peerId, pc);
-    } else if (signal.type === "candidate" && signal.candidate) {
-      if (pc.remoteDescription) {
-        await pc.addIceCandidate(signal.candidate);
-      } else {
-        const list = voiceChat.pendingCandidates.get(peerId) || [];
-        list.push(signal.candidate);
-        voiceChat.pendingCandidates.set(peerId, list);
-      }
-    }
-  } catch (error) {
-    console.warn("Voice signal failed", error);
-  }
-}
-
-async function flushVoiceCandidates(peerId, pc) {
-  const list = voiceChat.pendingCandidates.get(peerId) || [];
-  voiceChat.pendingCandidates.delete(peerId);
-  for (const candidate of list) {
-    await pc.addIceCandidate(candidate);
-  }
-}
-
-function attachRemoteVoice(peerId, stream) {
-  let audio = voiceChat.remoteAudio.get(peerId);
-  if (!audio) {
-    audio = document.createElement("audio");
-    audio.autoplay = true;
-    audio.playsInline = true;
-    audio.dataset.voicePeer = peerId;
-    document.body.appendChild(audio);
-    voiceChat.remoteAudio.set(peerId, audio);
-  }
-  if (audio.srcObject !== stream) {
-    audio.srcObject = stream;
-  }
-  audio.play().catch(() => {});
-}
-
-function closeVoicePeer(peerId) {
-  const pc = voiceChat.peers.get(peerId);
-  if (pc) pc.close();
-  voiceChat.peers.delete(peerId);
-  voiceChat.pendingCandidates.delete(peerId);
-  const audio = voiceChat.remoteAudio.get(peerId);
-  if (audio) {
-    audio.srcObject = null;
-    audio.remove();
-  }
-  voiceChat.remoteAudio.delete(peerId);
 }
 
 function saveIdentityFromStart() {
