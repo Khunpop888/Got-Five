@@ -617,10 +617,12 @@ function connect() {
       ui.validatingRoom = false;
       ui.joinCode = routeCode;
       history.replaceState(null, "", "/");
-      showToast(packet.data?.message || "คุณถูกนำออกจากห้อง");
+      showToast(packet.data?.message || "คุณถูกเตะออกจากห้อง");
       try {
         ui.socket?.close();
-      } catch {}
+      } catch {
+        // Socket may already be closing.
+      }
       render();
       return;
     }
@@ -1195,7 +1197,7 @@ function renderBoard() {
     rows += `<div class="board-row">${cells}</div>`;
   }
   return `
-    <section class="tool-panel board-panel">
+    <section class="tool-panel">
       <div class="tool-head">
         <h2>Private Board</h2>
         <span id="board-mark-count" class="status-pill">ตัดแล้ว ${marked.size}/60</span>
@@ -1785,7 +1787,7 @@ function renderLobbyPlayer(player, me) {
   let rowAction = `<span class="small-pill">${player.connected ? "Online" : "Offline"}</span>`;
   if (me?.isHost && player.id !== me.id && !player.isHost) {
     rowAction = player.kind === "bot"
-      ? `<button class="btn ghost" data-remove-bot="${escapeHtml(player.id)}">ลบ Bot</button>`
+      ? `<button class="btn ghost" data-remove-bot="${escapeHtml(player.id)}">ลบ</button>`
       : `<button class="btn ghost danger-lite" data-kick-player="${escapeHtml(player.id)}">เตะ</button>`;
   }
   return `
