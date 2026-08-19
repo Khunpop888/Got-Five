@@ -8380,3 +8380,92 @@ body[data-view="game"]::after {
     opacity: 1 !important;
   }
 }
+
+/* iPad final touch v7: keep own-rack compare tiles readable and keep the active-turn pill visible. */
+@media (min-width: 700px) and (max-width: 1180px) and (hover: none),
+       (min-width: 700px) and (max-width: 1180px) and (pointer: coarse) {
+  .rack-track.mine,
+  .rack-track.mine .tile-holder {
+    overflow: visible !important;
+  }
+
+  .rack-track.mine .tile-holder {
+    position: relative !important;
+  }
+
+  .rack-track.mine .compare-stack {
+    position: absolute !important;
+    left: 50% !important;
+    bottom: calc(100% + 2px) !important;
+    transform: translateX(-50%) !important;
+    width: max-content !important;
+    max-width: 88px !important;
+    min-width: 42px !important;
+    min-height: 34px !important;
+    max-height: none !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: flex-end !important;
+    align-content: flex-end !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    margin: 0 !important;
+    pointer-events: none !important;
+    z-index: 24 !important;
+  }
+
+  .rack-track.mine .compare-stack .tile.mini {
+    flex: 0 0 auto !important;
+    width: clamp(22px, 2.45vw, 28px) !important;
+    min-width: clamp(22px, 2.45vw, 28px) !important;
+    height: clamp(30px, 3.45vw, 37px) !important;
+    min-height: clamp(30px, 3.45vw, 37px) !important;
+    padding: 2px 2px 3px !important;
+    transform: none !important;
+  }
+
+  .rack-track.mine .compare-stack .tile.mini .tile-number {
+    font-size: clamp(11px, 1.55vw, 15px) !important;
+    line-height: 1 !important;
+  }
+
+  .rack-track.mine .compare-stack .tile.mini .dots {
+    display: flex !important;
+    min-height: 5px !important;
+    gap: 2px !important;
+  }
+}
+
+@media (min-width: 700px) and (max-width: 1180px) and (hover: none) and (orientation: landscape),
+       (min-width: 700px) and (max-width: 1180px) and (pointer: coarse) and (orientation: landscape) {
+  .opponents-grid .seat-card.is-turn {
+    grid-template-rows: 44px minmax(0, 1fr) !important;
+  }
+
+  .opponents-grid .seat-card.is-turn .seat-head {
+    height: 42px !important;
+    min-height: 42px !important;
+    overflow: visible !important;
+    align-items: flex-start !important;
+  }
+
+  .opponents-grid .seat-card.is-turn .seat-title,
+  .opponents-grid .seat-card.is-turn .seat-meta {
+    overflow: visible !important;
+  }
+
+  .opponents-grid .seat-card.is-turn .seat-meta .turn-seat-pill {
+    display: inline-flex !important;
+    min-height: 20px !important;
+    padding: 3px 7px !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    position: relative !important;
+    z-index: 20 !important;
+  }
+
+  .opponents-grid .seat-card.is-turn .rack-rail {
+    padding-top: 3px !important;
+  }
+}
