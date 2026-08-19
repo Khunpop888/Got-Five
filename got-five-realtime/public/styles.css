@@ -8300,3 +8300,83 @@ body[data-view="game"]::after {
     overflow: hidden !important;
   }
 }
+
+/* iPad regression fix v6: keep compare hint tiles and typed answer notes readable.
+   Earlier tablet compression made mini compare tiles too tiny and clipped note text. */
+@media (min-width: 700px) and (max-width: 1180px) and (hover: none),
+       (min-width: 700px) and (max-width: 1180px) and (pointer: coarse) {
+  .rack-track.mine .compare-stack,
+  .opponents-grid .rack-track.opponent .compare-stack {
+    min-height: 30px !important;
+    max-height: none !important;
+    align-items: flex-end !important;
+    align-content: flex-end !important;
+    overflow: visible !important;
+    z-index: 8 !important;
+  }
+
+  .rack-track.mine .compare-stack .tile.mini,
+  .opponents-grid .rack-track.opponent .compare-stack .tile.mini {
+    width: clamp(25px, 3.1vw, 34px) !important;
+    min-width: clamp(25px, 3.1vw, 34px) !important;
+    height: clamp(33px, 4.2vw, 43px) !important;
+    min-height: clamp(33px, 4.2vw, 43px) !important;
+    padding: 2px 2px 4px !important;
+    border-radius: 7px !important;
+    border-width: 2px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    overflow: visible !important;
+  }
+
+  .rack-track.mine .compare-stack .tile.mini .tile-number,
+  .opponents-grid .rack-track.opponent .compare-stack .tile.mini .tile-number {
+    display: block !important;
+    font-size: clamp(12px, 1.75vw, 17px) !important;
+    line-height: 1 !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+  }
+
+  .rack-track.mine .compare-stack .tile.mini .dots,
+  .opponents-grid .rack-track.opponent .compare-stack .tile.mini .dots {
+    display: flex !important;
+    min-height: 5px !important;
+    gap: 2px !important;
+    margin-top: 1px !important;
+  }
+
+  .rack-track.mine .compare-stack .tile.mini .dot,
+  .opponents-grid .rack-track.opponent .compare-stack .tile.mini .dot {
+    display: block !important;
+    width: clamp(3px, 0.55vw, 5px) !important;
+    height: clamp(3px, 0.55vw, 5px) !important;
+  }
+
+  .rack-track.mine .secret-note {
+    left: 4px !important;
+    right: 4px !important;
+    bottom: 5px !important;
+    height: clamp(18px, 2.6vw, 24px) !important;
+    min-height: 18px !important;
+    padding: 0 2px !important;
+    font-size: clamp(12px, 1.8vw, 16px) !important;
+    line-height: 1 !important;
+    color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+    caret-color: #111827 !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+  }
+
+  .guess-grid .input,
+  .guess-input {
+    color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+    caret-color: #111827 !important;
+    background: #fff !important;
+    opacity: 1 !important;
+  }
+}
