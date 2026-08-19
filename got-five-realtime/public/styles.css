@@ -7352,3 +7352,328 @@ body[data-view="game"]::after {
     font-size: clamp(12px, 1.45vw, 17px);
   }
 }
+/* iPad rescue layout v3: move floating audio controls away from the board and
+   give landscape mode enough real touch area for Step 1/2. */
+@media (min-width: 700px) and (max-width: 1180px) and (hover: none),
+       (min-width: 700px) and (max-width: 1180px) and (pointer: coarse) {
+  .sound-toggle,
+  .voice-fab,
+  .chat-fab {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    min-height: 38px;
+  }
+
+  .sound-toggle {
+    left: auto;
+    right: calc(env(safe-area-inset-right, 0px) + 102px);
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  }
+
+  .floating-chat {
+    right: calc(env(safe-area-inset-right, 0px) + 8px);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  }
+}
+
+@media (min-width: 700px) and (max-width: 1180px) and (hover: none) and (orientation: landscape),
+       (min-width: 700px) and (max-width: 1180px) and (pointer: coarse) and (orientation: landscape) {
+  body[data-view="game"] {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .game-screen {
+    height: 100dvh;
+    min-height: 0;
+    padding: 4px;
+    gap: 4px;
+    grid-template-rows: clamp(44px, 7.2dvh, 54px) clamp(48px, 7.8dvh, 62px) minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .topbar {
+    max-height: 54px;
+    min-height: 0;
+    padding: 4px 8px;
+    gap: 6px;
+  }
+
+  .topbar > div:first-child {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .topbar h1 {
+    font-size: clamp(24px, 2.7vw, 31px);
+  }
+
+  .topbar-meta {
+    gap: 5px;
+  }
+
+  .topbar-meta .small-pill {
+    max-width: 124px;
+    padding: 3px 7px;
+    font-size: 11px;
+  }
+
+  .topbar-actions {
+    gap: 5px;
+  }
+
+  .topbar-actions .btn {
+    min-height: 34px;
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+
+  .turn-spotlight {
+    height: 100%;
+    min-height: 0;
+    padding: 5px 8px;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 7px;
+  }
+
+  .turn-avatar {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+  }
+
+  .turn-task {
+    font-size: clamp(17px, 2.5vw, 24px);
+  }
+
+  .turn-meter {
+    min-width: 76px;
+    padding: 4px 7px;
+  }
+
+  .turn-meter b {
+    font-size: 22px;
+  }
+
+  .turn-speed span {
+    padding: 4px 7px;
+    font-size: 11px;
+  }
+
+  .main-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 63fr) minmax(0, 37fr);
+    gap: 4px;
+  }
+
+  .table-zone {
+    grid-template-columns: minmax(230px, 0.78fr) minmax(0, 1.22fr);
+    grid-template-rows: minmax(96px, 0.9fr) minmax(112px, 1.02fr) minmax(92px, 0.82fr);
+    gap: 4px;
+  }
+
+  .opponents-grid {
+    gap: 4px;
+  }
+
+  .opponents-grid .seat-card {
+    padding: 4px;
+    grid-template-rows: 30px minmax(0, 1fr);
+  }
+
+  .opponents-grid .seat-head {
+    height: 30px;
+    margin-bottom: 2px;
+  }
+
+  .opponents-grid .seat-avatar {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+  }
+
+  .opponents-grid .seat-title h2 {
+    font-size: clamp(15px, 1.85vw, 19px);
+  }
+
+  .opponents-grid .rack-rail {
+    padding-top: 8px;
+  }
+
+  .opponents-grid .rack-track.opponent {
+    gap: 2px;
+    padding: 4px;
+  }
+
+  .opponents-grid .rack-track.opponent .notch {
+    min-height: 38px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile-holder {
+    min-height: 48px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small {
+    width: min(100%, 32px);
+    height: 47px;
+  }
+
+  .tool-panel.step-one,
+  .tool-panel.step-two,
+  .own-rack-panel {
+    padding: 5px;
+  }
+
+  .tool-panel.step-one .tool-head,
+  .tool-panel.step-two .tool-head,
+  .own-rack-panel .tool-head {
+    margin-bottom: 4px;
+  }
+
+  .tool-panel.step-one .tool-head h2,
+  .tool-panel.step-two .tool-head h2,
+  .own-rack-panel .tool-head h2 {
+    font-size: clamp(18px, 2.2vw, 24px);
+  }
+
+  .step-number {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+  }
+
+  .step-state {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .tool-panel.step-one .draw-grid {
+    gap: 6px;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    padding: 4px 3px;
+    border-radius: 8px;
+  }
+
+  .tool-panel.step-one .deck-btn span:first-child {
+    font-size: clamp(11px, 1.7vw, 15px);
+    line-height: 1.1;
+  }
+
+  .tool-panel.step-one .deck-btn span:last-child {
+    padding: 2px 6px;
+    font-size: clamp(10px, 1.45vw, 13px);
+  }
+
+  .tool-panel.step-two {
+    grid-template-rows: auto minmax(58px, 1fr) 36px;
+  }
+
+  .tool-panel.step-two .center-tiles {
+    min-height: 58px;
+    height: 100%;
+    padding: 4px 8px;
+    gap: clamp(6px, 1vw, 12px);
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: clamp(42px, 4.8vw, 58px);
+    height: clamp(56px, 6vw, 70px);
+  }
+
+  .tool-panel.step-two .clue-action-grid {
+    margin-top: 3px;
+  }
+
+  .tool-panel.step-two .clue-action-buttons {
+    width: min(100%, 470px);
+    gap: 7px;
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 33px;
+    font-size: 13px;
+  }
+
+  .rack-rail-mine {
+    grid-template-columns: 50px minmax(0, 1fr) 50px;
+    gap: 5px;
+  }
+
+  .rack-rail-mine .rack-scale {
+    min-width: 44px;
+    min-height: 27px;
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+
+  .rack-track.mine {
+    gap: 4px;
+    padding: 5px 8px;
+  }
+
+  .rack-track.mine .notch {
+    min-height: 46px;
+  }
+
+  .rack-track.mine .tile-holder {
+    min-height: 58px;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 34px);
+    height: 54px;
+  }
+
+  .side-stack {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: 4px;
+  }
+
+  .side-stack > .tool-panel,
+  .side-stack > .log-panel {
+    padding: 5px;
+  }
+
+  .side-stack > .tool-panel .tool-head,
+  .side-stack > .log-panel .tool-head {
+    margin-bottom: 4px;
+  }
+
+  .side-stack > .tool-panel .tool-head h2,
+  .side-stack > .log-panel .tool-head h2 {
+    font-size: clamp(18px, 2.25vw, 25px);
+  }
+
+  .board-grid {
+    padding: 5px;
+    gap: 3px;
+  }
+
+  .board-row {
+    gap: 3px;
+  }
+
+  .board-cell {
+    border-radius: 6px;
+    padding: 1px;
+  }
+
+  .board-cell strong {
+    font-size: clamp(13px, 1.75vw, 18px);
+  }
+
+  .board-cell .dots {
+    margin-top: 1px;
+  }
+
+  .log-item {
+    grid-template-columns: 32px minmax(0, 1fr);
+    padding: 6px;
+    gap: 6px;
+  }
+}
