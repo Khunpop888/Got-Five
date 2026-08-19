@@ -8469,3 +8469,77 @@ body[data-view="game"]::after {
     padding-top: 3px !important;
   }
 }
+
+/* v8: own-rack compare chips must show full numbers and dots without cropping. */
+@media (min-width: 700px) and (max-width: 1180px) and (hover: none),
+       (min-width: 700px) and (max-width: 1180px) and (pointer: coarse) {
+  .rack-track.mine .compare-stack {
+    width: 78px !important;
+    min-width: 78px !important;
+    max-width: 78px !important;
+    min-height: 30px !important;
+    max-height: none !important;
+    overflow: visible !important;
+    flex-wrap: wrap !important;
+    gap: 2px !important;
+    justify-content: center !important;
+    align-items: flex-end !important;
+    align-content: flex-end !important;
+  }
+
+  .rack-track.mine .compare-stack .tile.mini {
+    box-sizing: border-box !important;
+    flex: 0 0 24px !important;
+    width: 24px !important;
+    min-width: 24px !important;
+    max-width: 24px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    padding: 2px 1px 3px !important;
+    border-width: 1px !important;
+    border-radius: 6px !important;
+    overflow: hidden !important;
+    display: grid !important;
+    grid-template-rows: 1fr auto !important;
+    align-items: center !important;
+    justify-items: center !important;
+    justify-content: center !important;
+    align-content: center !important;
+    gap: 1px !important;
+  }
+
+  .rack-track.mine .compare-stack .tile.mini .tile-number {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    letter-spacing: 0 !important;
+    transform: none !important;
+  }
+
+  .rack-track.mine .compare-stack .tile.mini .dots {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-height: 4px !important;
+    height: 4px !important;
+    gap: 1px !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .rack-track.mine .compare-stack .tile.mini .dot {
+    flex: 0 0 3px !important;
+    width: 3px !important;
+    height: 3px !important;
+    min-width: 3px !important;
+    min-height: 3px !important;
+  }
+}
