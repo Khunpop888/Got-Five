@@ -7677,3 +7677,573 @@ body[data-view="game"]::after {
     gap: 6px;
   }
 }
+/* iPad rescue layout v4.
+   Landscape is now a true tablet layout: play area on the left, deduction/log
+   on the right. Floating sound/mic/chat share one bottom-right control line. */
+@media (min-width: 700px) and (max-width: 1180px) and (hover: none),
+       (min-width: 700px) and (max-width: 1180px) and (pointer: coarse) {
+  .sound-toggle,
+  .voice-fab,
+  .chat-fab {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    padding: 0 !important;
+  }
+
+  .floating-chat {
+    right: calc(env(safe-area-inset-right, 0px) + 8px) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important;
+    top: auto !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-end !important;
+    justify-content: flex-end !important;
+    gap: 7px !important;
+  }
+
+  .sound-toggle {
+    left: auto !important;
+    top: auto !important;
+    right: calc(env(safe-area-inset-right, 0px) + 98px) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important;
+    z-index: 36 !important;
+  }
+
+  .sound-toggle-label,
+  .voice-fab small,
+  .chat-fab small {
+    display: none !important;
+  }
+}
+
+@media (min-width: 700px) and (max-width: 1180px) and (hover: none) and (orientation: landscape),
+       (min-width: 700px) and (max-width: 1180px) and (pointer: coarse) and (orientation: landscape) {
+  html,
+  body[data-view="game"] {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .game-screen {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    padding: 4px !important;
+    gap: 4px !important;
+    display: grid !important;
+    grid-template-rows: clamp(38px, 6.3dvh, 48px) clamp(46px, 7.6dvh, 58px) minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  .topbar {
+    max-height: 48px !important;
+    min-height: 0 !important;
+    padding: 3px 7px !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 6px !important;
+  }
+
+  .topbar > div:first-child {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    gap: 8px !important;
+    align-items: center !important;
+    min-width: 0 !important;
+  }
+
+  .topbar h1 {
+    font-size: clamp(22px, 2.45vw, 29px) !important;
+    line-height: 0.95 !important;
+  }
+
+  .topbar-meta {
+    gap: 4px !important;
+    overflow: hidden !important;
+  }
+
+  .topbar-meta .small-pill {
+    max-width: 120px !important;
+    padding: 3px 7px !important;
+    font-size: 10px !important;
+  }
+
+  .topbar-meta .small-pill:nth-child(2),
+  .topbar-meta .starter-pill,
+  .topbar-meta [data-clock-start] {
+    display: none !important;
+  }
+
+  .topbar-actions {
+    gap: 5px !important;
+  }
+
+  .topbar-actions .btn {
+    min-height: 31px !important;
+    padding: 5px 8px !important;
+    font-size: 11px !important;
+    border-radius: 7px !important;
+  }
+
+  .turn-spotlight {
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 4px 8px !important;
+    grid-template-columns: minmax(0, 1fr) auto auto !important;
+    gap: 7px !important;
+    overflow: hidden !important;
+  }
+
+  .turn-person {
+    min-width: 0 !important;
+  }
+
+  .turn-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+  }
+
+  .turn-kicker {
+    font-size: 10px !important;
+  }
+
+  .turn-task {
+    font-size: clamp(16px, 2.35vw, 23px) !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .turn-person small {
+    display: none !important;
+  }
+
+  .turn-meter {
+    min-width: 78px !important;
+    padding: 3px 7px !important;
+  }
+
+  .turn-meter span {
+    font-size: 10px !important;
+  }
+
+  .turn-meter b {
+    font-size: 21px !important;
+  }
+
+  .turn-speed {
+    display: flex !important;
+    gap: 5px !important;
+  }
+
+  .turn-speed span {
+    padding: 3px 7px !important;
+    font-size: 10px !important;
+    white-space: nowrap !important;
+  }
+
+  .main-grid {
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 58fr) minmax(390px, 42fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    gap: 4px !important;
+    overflow: hidden !important;
+  }
+
+  .table-zone {
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(190px, 0.68fr) minmax(0, 1.32fr) !important;
+    grid-template-rows: minmax(126px, 1.08fr) minmax(122px, 1.02fr) minmax(104px, 0.9fr) !important;
+    grid-template-areas:
+      "opponents opponents"
+      "draw clue"
+      "rack rack" !important;
+    gap: 4px !important;
+    overflow: hidden !important;
+  }
+
+  .opponents-grid {
+    grid-area: opponents !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .opponents-grid .seat-card {
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-rows: 28px minmax(0, 1fr) !important;
+    padding: 4px !important;
+    overflow: hidden !important;
+  }
+
+  .opponents-grid .seat-head {
+    height: 28px !important;
+    min-height: 0 !important;
+    margin-bottom: 2px !important;
+    gap: 5px !important;
+  }
+
+  .opponents-grid .seat-avatar {
+    width: 27px !important;
+    height: 27px !important;
+    min-width: 27px !important;
+  }
+
+  .opponents-grid .seat-title h2 {
+    font-size: clamp(15px, 1.85vw, 20px) !important;
+    line-height: 1 !important;
+  }
+
+  .opponents-grid .seat-meta .small-pill:not(.turn-seat-pill) {
+    display: none !important;
+  }
+
+  .opponents-grid .rack-rail {
+    padding: 8px 0 0 !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .opponents-grid .rack-track.opponent {
+    height: 100% !important;
+    min-height: 0 !important;
+    grid-template-columns: repeat(11, minmax(0, 1fr)) !important;
+    gap: 2px !important;
+    padding: 4px !important;
+    overflow: visible !important;
+  }
+
+  .opponents-grid .rack-track.opponent .notch {
+    min-height: 43px !important;
+    border-radius: 6px !important;
+  }
+
+  .opponents-grid .rack-track.opponent .tile-holder {
+    min-height: 54px !important;
+  }
+
+  .opponents-grid .rack-track.opponent .compare-stack {
+    min-height: 16px !important;
+    max-height: 18px !important;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small {
+    width: min(100%, 34px) !important;
+    height: 50px !important;
+    padding: 3px 2px !important;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small .tile-number {
+    font-size: 14px !important;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.mini {
+    width: 18px !important;
+    height: 23px !important;
+  }
+
+  .tool-panel.step-one,
+  .tool-panel.step-two,
+  .own-rack-panel {
+    min-height: 0 !important;
+    padding: 5px !important;
+    overflow: hidden !important;
+  }
+
+  .tool-panel.step-one {
+    grid-area: draw !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+  }
+
+  .tool-panel.step-two {
+    grid-area: clue !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(64px, 1fr) 36px !important;
+  }
+
+  .tool-panel.step-one .tool-head,
+  .tool-panel.step-two .tool-head,
+  .own-rack-panel .tool-head {
+    min-height: 0 !important;
+    margin-bottom: 4px !important;
+  }
+
+  .tool-panel.step-one .tool-head h2,
+  .tool-panel.step-two .tool-head h2,
+  .own-rack-panel .tool-head h2 {
+    font-size: clamp(17px, 2.1vw, 23px) !important;
+    line-height: 1 !important;
+  }
+
+  .step-number {
+    width: 27px !important;
+    height: 27px !important;
+    min-width: 27px !important;
+    font-size: 13px !important;
+  }
+
+  .step-state {
+    padding: 4px 7px !important;
+    font-size: 10px !important;
+  }
+
+  .tool-panel.step-one .draw-grid {
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 4px 3px !important;
+    border-radius: 8px !important;
+  }
+
+  .tool-panel.step-one .deck-btn span:first-child {
+    font-size: clamp(11px, 1.55vw, 15px) !important;
+    line-height: 1.05 !important;
+  }
+
+  .tool-panel.step-one .deck-btn span:last-child {
+    padding: 2px 6px !important;
+    font-size: clamp(10px, 1.35vw, 12px) !important;
+  }
+
+  .tool-panel.step-two .center-tiles {
+    height: 100% !important;
+    min-height: 64px !important;
+    max-height: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: clamp(6px, 0.9vw, 11px) !important;
+    padding: 4px 8px !important;
+    overflow: hidden !important;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    flex: 0 0 auto !important;
+    width: clamp(42px, 4.5vw, 56px) !important;
+    height: clamp(58px, 5.9vw, 70px) !important;
+  }
+
+  .tool-panel.step-two .center-tiles .tile-number {
+    font-size: clamp(18px, 2.5vw, 25px) !important;
+  }
+
+  .tool-panel.step-two .clue-action-grid {
+    position: static !important;
+    min-height: 0 !important;
+    margin-top: 3px !important;
+  }
+
+  .tool-panel.step-two .clue-action-buttons {
+    position: static !important;
+    transform: none !important;
+    width: min(100%, 460px) !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    margin: 0 auto !important;
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 33px !important;
+    padding: 5px 8px !important;
+    font-size: 13px !important;
+    border-radius: 7px !important;
+  }
+
+  .own-rack-panel {
+    grid-area: rack !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+  }
+
+  .rack-rail-mine {
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: 48px minmax(0, 1fr) 48px !important;
+    grid-template-areas: "low track high" !important;
+    gap: 5px !important;
+    align-items: center !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .rack-rail-mine .rack-scale {
+    position: static !important;
+    min-width: 44px !important;
+    min-height: 28px !important;
+    padding: 4px 6px !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  .rack-track.mine {
+    grid-area: track !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    grid-template-columns: repeat(11, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    padding: 5px 8px !important;
+    overflow: visible !important;
+  }
+
+  .rack-track.mine .notch {
+    min-height: 48px !important;
+    border-radius: 7px !important;
+  }
+
+  .rack-track.mine .tile-holder {
+    min-height: 60px !important;
+  }
+
+  .rack-track.mine .compare-stack {
+    min-height: 16px !important;
+    max-height: 20px !important;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 34px) !important;
+    height: 54px !important;
+  }
+
+  .side-stack {
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-template-rows: minmax(232px, 0.58fr) minmax(0, 0.42fr) !important;
+    gap: 4px !important;
+    overflow: hidden !important;
+  }
+
+  .side-stack > .tool-panel,
+  .side-stack > .log-panel {
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    padding: 5px !important;
+    overflow: hidden !important;
+  }
+
+  .side-stack > .tool-panel .tool-head,
+  .side-stack > .log-panel .tool-head {
+    margin-bottom: 4px !important;
+  }
+
+  .side-stack > .tool-panel .tool-head h2,
+  .side-stack > .log-panel .tool-head h2 {
+    font-size: clamp(18px, 2.2vw, 24px) !important;
+    line-height: 1.05 !important;
+  }
+
+  .board-grid {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-rows: repeat(5, minmax(0, 1fr)) !important;
+    gap: 3px !important;
+    padding: 5px !important;
+    overflow: hidden !important;
+  }
+
+  .board-row {
+    display: grid !important;
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+    gap: 3px !important;
+    min-height: 0 !important;
+  }
+
+  .board-cell {
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    aspect-ratio: auto !important;
+    padding: 1px !important;
+    border-radius: 6px !important;
+  }
+
+  .board-cell strong {
+    font-size: clamp(13px, 1.75vw, 18px) !important;
+    line-height: 1 !important;
+  }
+
+  .board-cell .dots {
+    margin-top: 1px !important;
+    gap: 2px !important;
+  }
+
+  .board-cell .dot {
+    width: clamp(3px, 0.58vw, 5px) !important;
+    height: clamp(3px, 0.58vw, 5px) !important;
+  }
+
+  .log-list {
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .log-item {
+    grid-template-columns: 31px minmax(0, 1fr) !important;
+    gap: 6px !important;
+    padding: 6px !important;
+    contain-intrinsic-size: 72px !important;
+  }
+
+  .log-avatar,
+  .log-avatar-cell .avatar,
+  .log-avatar-cell {
+    width: 29px !important;
+    height: 29px !important;
+    min-width: 29px !important;
+  }
+
+  .log-title strong {
+    font-size: 12px !important;
+  }
+
+  .log-title span,
+  .log-body {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+  }
+
+  .log-body .tile {
+    width: 34px !important;
+    height: 44px !important;
+  }
+
+  .floating-chat.is-open {
+    width: min(330px, calc(100vw - 18px)) !important;
+    right: calc(env(safe-area-inset-right, 0px) + 8px) !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important;
+    display: grid !important;
+    justify-items: end !important;
+  }
+}
