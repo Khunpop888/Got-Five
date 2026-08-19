@@ -1495,6 +1495,22 @@ def handle_chat(client: Client, data: dict[str, Any]) -> None:
     broadcast_room(room, "chat")
 
 
+def handle_voice_signal(client: Client, data: dict[str, Any]) -> None:
+    room = require_room(client)
+    player = require_player(room, client)
+    target_id = str(data.get("targetId") or "")
+    payload = data.get("payload") or {}
+    if not target_id or not isinstance(payload, dict):
+        return
+    target = get_player(room, target_id)
+    if not target or target.kind == "bot":
+        return
+    packet = {"fromId": player.id, "payload": payload}
+    for target_client in list(room.clients):
+        if target_client.alive and target_client.player_id == target_id:
+            target_client.send("voiceSignal", packet)
+
+
 def handle_guess(client: Client, data: dict[str, Any]) -> None:
     room = require_room(client)
     player = require_player(room, client)
@@ -1574,6 +1590,8 @@ def handle_message(client: Client, message: str) -> None:
                 handle_mark(client, data)
             elif event == "chat":
                 handle_chat(client, data)
+            elif event == "voiceSignal":
+                handle_voice_signal(client, data)
             elif event == "gotFive":
                 handle_guess(client, data)
             elif event == "ping":
@@ -1617,7 +1635,7 @@ def maybe_schedule_bot_turn(room: Room) -> None:
                 end_turn(room, count_turn=False)
                 broadcast_room(room)
 
-    timer = threading.Timer(1.2, run_bot)
+    timer = threading.Timer(5.0, run_bot)
     timer.daemon = True
     room.bot_timers.append(timer)
     timer.start()

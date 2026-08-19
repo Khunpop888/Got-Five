@@ -61,6 +61,22 @@ const gameAudio = {
   userActivated: false,
 };
 
+const voiceChat = {
+  enabled: false,
+  stream: null,
+  peers: new Map(),
+  audio: new Map(),
+  pendingCandidates: new Map(),
+  makingOffer: new Set(),
+  ignoreOffer: new Set(),
+  config: {
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" },
+      { urls: "stun:global.stun.twilio.com:3478" },
+    ],
+  },
+};
+
 const gameNarrator = {
   supported: "speechSynthesis" in window && "SpeechSynthesisUtterance" in window,
   voice: null,
@@ -173,7 +189,7 @@ function updateSoundToggle() {
   const icon = button.querySelector(".sound-toggle-icon");
   const label = button.querySelector(".sound-toggle-label");
   if (icon) icon.textContent = ui.soundEnabled ? "🔊" : "🔇";
-  if (label) label.textContent = ui.soundEnabled ? "เสียงพูด: เปิด" : "เสียงพูด: ปิด";
+  if (label) label.textContent = ui.soundEnabled ? "เสียงเกม: เปิด" : "เสียงเกม: ปิด";
   document.documentElement.dataset.sound = ui.soundEnabled ? "on" : "off";
 }
 
@@ -378,6 +394,266 @@ function playSound(name, options = {}) {
   }
 }
 
+function voiceSupported() {
+  return Boolean(
+    navigator.mediaDevices
+      && navigator.mediaDevices.getUserMedia
+      && window.RTCPeerConnection
+  );
+}
+
+async function toggleVoiceChat() {
+  unlockAudio();
+  if (voiceChat.enabled) {
+    stopVoiceChat(true);
+    render();
+    return;
+  }
+  if (!voiceSupported()) {
+    showToast("เบราว์เซอร์นี้ยังไม่รองรับเสียงคุยแบบ real-time");
+    return;
+  }
+  try {
+    voiceChat.stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: false,
+    });
+    voiceChat.enabled = true;
+    document.documentElement.dataset.voiceChat = "on";
+    syncVoicePeers(true);
+    render();
+    showToast("เปิดเสียงคุยแล้ว");
+  } catch {
+    voiceChat.enabled = false;
+    voiceChat.stream = null;
+    document.documentElement.dataset.voiceChat = "off";
+    showToast("เปิดไมค์ไม่ได้ กรุณาอนุญาตไมค์ในเบราว์เซอร์");
+  }
+}
+
+function stopVoiceChat(notifyPeers = false) {
+  if (notifyPeers) {
+    for (const peerId of voiceChat.peers.keys()) {
+      sendVoiceSignal(peerId, { bye: true });
+    }
+  }
+  closeVoicePeers();
+  if (voiceChat.stream) {
+    voiceChat.stream.getTracks().forEach((track) => track.stop());
+  }
+  voiceChat.stream = null;
+  voiceChat.enabled = false;
+  voiceChat.pendingCandidates.clear();
+  voiceChat.makingOffer.clear();
+  voiceChat.ignoreOffer.clear();
+  document.documentElement.dataset.voiceChat = "off";
+  showToast("ปิดเสียงคุยแล้ว");
+}
+
+function closeVoicePeers() {
+  for (const peerId of Array.from(voiceChat.peers.keys())) {
+    closeVoicePeer(peerId);
+  }
+}
+
+function closeVoicePeer(peerId) {
+  const pc = voiceChat.peers.get(peerId);
+  if (pc) {
+    try {
+      pc.onicecandidate = null;
+      pc.ontrack = null;
+      pc.onconnectionstatechange = null;
+      pc.close();
+    } catch {
+      // Ignore already closed peers.
+    }
+  }
+  voiceChat.peers.delete(peerId);
+  voiceChat.pendingCandidates.delete(peerId);
+  voiceChat.makingOffer.delete(peerId);
+  voiceChat.ignoreOffer.delete(peerId);
+  const audio = voiceChat.audio.get(peerId);
+  if (audio) {
+    audio.srcObject = null;
+    audio.remove();
+  }
+  voiceChat.audio.delete(peerId);
+}
+
+function voicePeerIds() {
+  const me = getMe();
+  if (!me || !ui.state?.players) return [];
+  return ui.state.players
+    .filter((player) => player.id !== me.id && player.kind !== "bot" && player.connected)
+    .map((player) => player.id);
+}
+
+function shouldInitiateVoice(peerId) {
+  const meId = getMe()?.id || "";
+  return meId && peerId && meId.localeCompare(peerId) < 0;
+}
+
+function shouldCreateVoiceOffer(peerId, wasExisting = false) {
+  if (!shouldInitiateVoice(peerId)) return false;
+  const pc = voiceChat.peers.get(peerId);
+  if (!pc) return true;
+  if (pc.signalingState !== "stable") return false;
+  if (!wasExisting) return true;
+  return pc.connectionState !== "connected"
+    && pc.iceConnectionState !== "connected"
+    && pc.iceConnectionState !== "completed";
+}
+
+function syncVoicePeers(announce = false) {
+  if (!voiceChat.enabled || !voiceChat.stream) return;
+  const activePeers = new Set(voicePeerIds());
+  for (const peerId of Array.from(voiceChat.peers.keys())) {
+    if (!activePeers.has(peerId)) closeVoicePeer(peerId);
+  }
+  for (const peerId of activePeers) {
+    const wasExisting = voiceChat.peers.has(peerId);
+    ensureVoicePeer(peerId);
+    if (announce) sendVoiceSignal(peerId, { ready: true });
+    if (shouldCreateVoiceOffer(peerId, wasExisting)) createVoiceOffer(peerId);
+  }
+}
+
+function ensureVoicePeer(peerId) {
+  if (!voiceChat.enabled || !voiceChat.stream || !peerId) return null;
+  if (voiceChat.peers.has(peerId)) return voiceChat.peers.get(peerId);
+  const pc = new RTCPeerConnection(voiceChat.config);
+  voiceChat.stream.getTracks().forEach((track) => pc.addTrack(track, voiceChat.stream));
+  pc.onicecandidate = (event) => {
+    if (event.candidate) sendVoiceSignal(peerId, { candidate: event.candidate });
+  };
+  pc.ontrack = (event) => {
+    const [stream] = event.streams;
+    if (stream) attachVoiceAudio(peerId, stream);
+  };
+  pc.onconnectionstatechange = () => {
+    if (["failed", "closed"].includes(pc.connectionState)) {
+      closeVoicePeer(peerId);
+    }
+  };
+  voiceChat.peers.set(peerId, pc);
+  return pc;
+}
+
+function attachVoiceAudio(peerId, stream) {
+  let audio = voiceChat.audio.get(peerId);
+  if (!audio) {
+    audio = document.createElement("audio");
+    audio.autoplay = true;
+    audio.playsInline = true;
+    audio.dataset.voicePeer = peerId;
+    document.body.appendChild(audio);
+    voiceChat.audio.set(peerId, audio);
+  }
+  if (audio.srcObject !== stream) {
+    audio.srcObject = stream;
+  }
+  audio.play?.().catch(() => {});
+}
+
+async function createVoiceOffer(peerId) {
+  const pc = ensureVoicePeer(peerId);
+  if (!pc || voiceChat.makingOffer.has(peerId)) return;
+  voiceChat.makingOffer.add(peerId);
+  try {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    sendVoiceSignal(peerId, { description: pc.localDescription });
+  } catch {
+    closeVoicePeer(peerId);
+  } finally {
+    voiceChat.makingOffer.delete(peerId);
+  }
+}
+
+async function handleVoiceSignal(data) {
+  const fromId = data?.fromId;
+  const payload = data?.payload || {};
+  if (!fromId || !payload) return;
+  if (payload.bye) {
+    closeVoicePeer(fromId);
+    return;
+  }
+  if (!voiceChat.enabled || !voiceChat.stream) return;
+  const pc = ensureVoicePeer(fromId);
+  if (!pc) return;
+  if (payload.ready) {
+    if (shouldInitiateVoice(fromId)) {
+      const existing = voiceChat.peers.get(fromId);
+      if (existing && existing.signalingState !== "stable" && existing.connectionState !== "connected") {
+        closeVoicePeer(fromId);
+      }
+      if (shouldCreateVoiceOffer(fromId, voiceChat.peers.has(fromId))) createVoiceOffer(fromId);
+    }
+    return;
+  }
+  try {
+    if (payload.description) {
+      const description = new RTCSessionDescription(payload.description);
+      const polite = !shouldInitiateVoice(fromId);
+      const offerCollision = description.type === "offer"
+        && (voiceChat.makingOffer.has(fromId) || pc.signalingState !== "stable");
+      voiceChat.ignoreOffer.delete(fromId);
+      if (offerCollision && !polite) {
+        voiceChat.ignoreOffer.add(fromId);
+        return;
+      }
+      if (offerCollision) {
+        await Promise.all([
+          pc.setLocalDescription({ type: "rollback" }),
+          pc.setRemoteDescription(description),
+        ]);
+      } else {
+        await pc.setRemoteDescription(description);
+      }
+      await flushVoiceCandidates(fromId, pc);
+      if (description.type === "offer") {
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        sendVoiceSignal(fromId, { description: pc.localDescription });
+      }
+      return;
+    }
+    if (payload.candidate) {
+      const candidate = new RTCIceCandidate(payload.candidate);
+      if (pc.remoteDescription) {
+        await pc.addIceCandidate(candidate);
+      } else {
+        const list = voiceChat.pendingCandidates.get(fromId) || [];
+        list.push(candidate);
+        voiceChat.pendingCandidates.set(fromId, list);
+      }
+    }
+  } catch {
+    if (!voiceChat.ignoreOffer.has(fromId)) closeVoicePeer(fromId);
+  }
+}
+
+async function flushVoiceCandidates(peerId, pc) {
+  const pending = voiceChat.pendingCandidates.get(peerId) || [];
+  voiceChat.pendingCandidates.delete(peerId);
+  for (const candidate of pending) {
+    try {
+      await pc.addIceCandidate(candidate);
+    } catch {
+      // A stale ICE candidate is harmless after reconnects.
+    }
+  }
+}
+
+function sendVoiceSignal(targetId, payload) {
+  if (!targetId || !payload) return false;
+  return send("voiceSignal", { targetId, payload });
+}
+
 function narratorPlayer(state, playerId) {
   return state?.players?.find((player) => player.id === playerId) || null;
 }
@@ -574,6 +850,10 @@ function connect() {
       applyMarkUpdate(packet.data);
       return;
     }
+    if (packet.event === "voiceSignal") {
+      handleVoiceSignal(packet.data);
+      return;
+    }
     if (packet.event === "roomJoined" || packet.event === "state" || packet.event === "chat") {
       const isRedundantSync = packet.event === "state"
         && !packet.data?.eventData
@@ -592,6 +872,7 @@ function connect() {
       }
       syncIdentityFromState(packet.data);
       syncPendingAvatar(packet.event, packet.data);
+      syncVoicePeers(true);
       if (packet.data?.eventData) {
         ui.lastEvent = packet.data.eventData;
         window.setTimeout(() => {
@@ -636,6 +917,7 @@ function connect() {
 
   socket.addEventListener("close", () => {
     ui.connected = false;
+    closeVoicePeers();
     render();
     clearTimeout(ui.reconnectTimer);
     ui.reconnectTimer = setTimeout(connect, 1200);
@@ -1248,6 +1530,10 @@ function renderFloatingChat() {
           </div>
         </section>
       ` : ""}
+      <button class="voice-fab ${voiceChat.enabled ? "is-live" : ""}" data-voice-toggle aria-pressed="${voiceChat.enabled ? "true" : "false"}" aria-label="${voiceChat.enabled ? "ปิดไมค์คุยกับเพื่อน" : "เปิดไมค์คุยกับเพื่อน"}">
+        <span>${voiceChat.enabled ? "🎙" : "🎤"}</span>
+        <small>${voiceChat.enabled ? "Live" : "Mic"}</small>
+      </button>
       <button class="chat-fab" data-chat-toggle aria-label="เปิดแชท">
         <span>💬</span>
         ${unreadCount ? `<b>${unreadCount}</b>` : ""}
@@ -1975,6 +2261,7 @@ function bindGame() {
   bind("#next-match", "click", () => send("nextMatch"));
   bind("#restart-room-modal", "click", () => send("restart"));
   bind("#next-match-modal", "click", () => send("nextMatch"));
+  bindAll("[data-voice-toggle]", "click", toggleVoiceChat);
   bindAll("[data-chat-toggle]", "click", () => {
     ui.chatOpen = !ui.chatOpen;
     if (ui.chatOpen) {

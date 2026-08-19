@@ -426,6 +426,1091 @@
   }
 }
 
+/* Final lock: keep the approved rollback layout, then fix mobile/tablet fit last. */
+@media (min-width: 700px) and (max-width: 1180px) {
+  body[data-view="game"] {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .game-screen {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    gap: 6px;
+    padding: 6px;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .topbar {
+    min-height: 60px;
+    padding: 7px 10px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .topbar h1 {
+    font-size: 32px;
+    line-height: 0.95;
+  }
+
+  .topbar-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 7px;
+  }
+
+  .topbar-actions .btn {
+    width: auto;
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .turn-spotlight {
+    min-height: 82px;
+    padding: 9px 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 140px 230px;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .main-grid {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 64fr) minmax(330px, 36fr);
+    gap: 6px;
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  .table-zone {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-rows: minmax(138px, 0.95fr) 128px minmax(126px, 0.88fr);
+    grid-template-areas:
+      "opponents opponents"
+      "draw clue"
+      "rack rack";
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .opponents-grid {
+    grid-area: opponents;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .opponents-grid .seat-card {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: 6px;
+  }
+
+  .opponents-grid .rack-track.opponent {
+    min-height: 66px;
+    padding: 6px;
+    gap: 3px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small {
+    width: min(100%, 36px);
+    height: 52px;
+  }
+
+  .tool-panel.step-one {
+    grid-area: draw;
+    padding: 7px;
+    overflow: hidden;
+  }
+
+  .tool-panel.step-two {
+    grid-area: clue;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    padding: 7px;
+    overflow: hidden;
+  }
+
+  .tool-panel.step-one .draw-grid {
+    height: 72px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    height: 70px;
+    min-height: 70px;
+    overflow: hidden;
+    box-shadow:
+      0 3px 0 color-mix(in srgb, var(--tile-bg) 46%, #111827),
+      inset 0 1px 0 rgba(255, 255, 255, 0.68),
+      inset 0 -13px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .tool-panel.step-two .center-tiles {
+    height: 70px;
+    min-height: 70px;
+    justify-content: center;
+    gap: 8px;
+    padding: 5px 8px;
+    overflow: hidden;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: 48px;
+    height: 62px;
+  }
+
+  .tool-panel.step-two .clue-action-buttons {
+    width: min(100%, 430px);
+    margin-inline: auto;
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 36px;
+  }
+
+  .own-rack-panel {
+    grid-area: rack;
+    padding: 7px;
+    overflow: hidden;
+  }
+
+  .own-rack-panel .tool-head {
+    margin-bottom: 4px;
+  }
+
+  .own-rack-panel .rack-rail {
+    padding: 0;
+  }
+
+  .rack-track.mine {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(11, minmax(0, 1fr));
+    gap: 5px;
+    min-height: 96px;
+    padding: 8px 10px;
+  }
+
+  .rack-track.mine .notch {
+    width: 100%;
+    min-height: 72px;
+  }
+
+  .rack-track.mine .tile-holder {
+    min-height: 84px;
+    grid-template-rows: minmax(24px, auto) auto;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 42px);
+    height: 62px;
+  }
+
+  .side-stack {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .log-panel {
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .log-list {
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sound-toggle {
+    left: 10px;
+    top: calc(env(safe-area-inset-top, 0px) + 78px);
+    bottom: auto;
+  }
+
+  .floating-chat {
+    right: 10px;
+    top: calc(env(safe-area-inset-top, 0px) + 78px);
+    bottom: auto;
+  }
+
+  .floating-chat.is-open {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  }
+}
+
+@media (min-width: 700px) and (max-width: 1180px) and (orientation: portrait) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .turn-spotlight {
+    grid-template-columns: minmax(0, 1fr) 132px;
+  }
+
+  .turn-speed {
+    grid-column: 1 / -1;
+  }
+
+  .main-grid {
+    grid-template-columns: minmax(0, 60fr) minmax(305px, 40fr);
+  }
+
+  .table-zone {
+    grid-template-rows: minmax(130px, 0.92fr) 122px minmax(118px, 0.82fr);
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small {
+    width: min(100%, 32px);
+    height: 48px;
+  }
+
+  .board-cell {
+    min-height: 36px;
+  }
+
+  .board-cell strong {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 560px) {
+  .game-screen {
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .table-zone {
+    grid-template-columns: minmax(96px, 0.64fr) minmax(0, 1.36fr);
+    gap: 5px;
+  }
+
+  .opponents-grid {
+    gap: 5px;
+    padding-bottom: 2px;
+  }
+
+  .opponents-grid .seat-card {
+    flex-basis: min(92vw, 346px);
+    min-height: 128px;
+    padding: 6px;
+  }
+
+  .opponents-grid .rack-track.opponent {
+    min-height: 58px;
+    padding: 5px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small {
+    max-width: 32px;
+    height: 46px;
+  }
+
+  .tool-panel.step-one,
+  .tool-panel.step-two,
+  .own-rack-panel {
+    padding: 5px;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    height: 52px;
+    min-height: 52px;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow:
+      0 2px 0 color-mix(in srgb, var(--tile-bg) 48%, #111827),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      inset 0 -10px 14px rgba(0, 0, 0, 0.22);
+  }
+
+  .tool-panel.step-two {
+    grid-template-rows: auto 65px 31px;
+  }
+
+  .tool-panel.step-two .center-tiles {
+    height: 65px;
+    min-height: 65px;
+    gap: 4px;
+    padding: 5px;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: clamp(30px, 9.3vw, 37px);
+    height: clamp(47px, 13.5vw, 54px);
+    box-shadow:
+      0 3px 0 var(--tile-shadow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      inset 0 -9px 15px rgba(0, 0, 0, 0.2);
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 30px;
+    padding: 4px;
+  }
+
+  .own-rack-panel .tool-head {
+    margin-bottom: 2px;
+  }
+
+  .own-rack-panel .tool-head h2 {
+    font-size: 22px;
+  }
+
+  .own-rack-panel .rack-rail {
+    padding: 0;
+  }
+
+  .rack-track.mine {
+    min-height: 92px;
+    padding: 6px 4px 5px;
+    gap: 2px;
+  }
+
+  .rack-track.mine .notch {
+    min-height: 49px;
+  }
+
+  .rack-track.mine .tile-holder {
+    min-height: 78px;
+    grid-template-rows: minmax(24px, auto) auto;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 30px);
+    height: 52px;
+  }
+
+  .rack-track.mine .compare-stack {
+    min-height: 25px;
+    max-height: 28px;
+    margin-bottom: 1px;
+  }
+
+  .board-cell {
+    min-height: clamp(30px, 7.7vw, 38px);
+  }
+
+  .sound-toggle,
+  .voice-fab,
+  .chat-fab {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 999px;
+  }
+
+  .sound-toggle {
+    left: 8px;
+    top: calc(env(safe-area-inset-top, 0px) + 72px);
+    bottom: auto;
+  }
+
+  .sound-toggle-label {
+    display: none;
+  }
+
+  .floating-chat {
+    right: 8px;
+    top: calc(env(safe-area-inset-top, 0px) + 72px);
+    bottom: auto;
+    gap: 7px;
+  }
+
+  .floating-chat.is-open {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  }
+}
+
+/* 2026-08-19: mobile/tablet fit pass + real-time voice controls.
+   Kept as the last layer so older experimental responsive blocks cannot override it. */
+.floating-chat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.voice-fab {
+  width: 58px;
+  height: 58px;
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 32% 25%, rgba(255, 255, 255, 0.62), transparent 30%),
+    linear-gradient(135deg, #10b981, #0ea5e9 55%, #7c3aed);
+  box-shadow:
+    0 10px 24px rgba(14, 165, 233, 0.32),
+    0 3px 0 rgba(15, 23, 42, 0.28);
+  color: #fff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.voice-fab span {
+  font-size: 23px;
+}
+
+.voice-fab small {
+  display: none;
+}
+
+.voice-fab.is-live {
+  background:
+    radial-gradient(circle at 32% 25%, rgba(255, 255, 255, 0.72), transparent 30%),
+    linear-gradient(135deg, #ef4444, #f97316 55%, #facc15);
+  box-shadow:
+    0 0 0 6px rgba(248, 113, 113, 0.18),
+    0 12px 28px rgba(239, 68, 68, 0.34),
+    0 3px 0 rgba(127, 29, 29, 0.36);
+}
+
+@media (min-width: 700px) and (max-width: 1180px) {
+  html {
+    height: 100%;
+  }
+
+  body[data-view="game"] {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .game-screen {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    gap: 6px;
+    padding: 6px;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .topbar {
+    min-height: 60px;
+    padding: 7px 10px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .topbar h1 {
+    font-size: 32px;
+    line-height: 0.95;
+  }
+
+  .topbar-meta {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .topbar-meta .small-pill {
+    max-width: 210px;
+    min-height: 25px;
+    padding: 4px 9px;
+    font-size: 12px;
+  }
+
+  .topbar-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 7px;
+  }
+
+  .topbar-actions .btn {
+    width: auto;
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .turn-spotlight {
+    min-height: 82px;
+    padding: 9px 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 140px 230px;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .turn-person {
+    min-width: 0;
+  }
+
+  .turn-avatar {
+    width: 52px;
+    height: 52px;
+  }
+
+  .turn-task {
+    font-size: 24px;
+    line-height: 1.05;
+  }
+
+  .turn-meter {
+    min-width: 0;
+    padding: 7px 10px;
+  }
+
+  .turn-meter b {
+    font-size: 28px;
+  }
+
+  .turn-speed {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .turn-speed span {
+    min-width: 0;
+    justify-content: center;
+    white-space: nowrap;
+  }
+
+  .main-grid {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 64fr) minmax(330px, 36fr);
+    gap: 6px;
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  .table-zone {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-rows: minmax(138px, 0.95fr) 128px minmax(126px, 0.88fr);
+    grid-template-areas:
+      "opponents opponents"
+      "draw clue"
+      "rack rack";
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .opponents-grid {
+    grid-area: opponents;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .opponents-grid .seat-card {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: 6px;
+  }
+
+  .opponents-grid .seat-head {
+    min-height: 40px;
+    margin-bottom: 4px;
+  }
+
+  .opponents-grid .seat-avatar {
+    width: 42px;
+    height: 42px;
+  }
+
+  .opponents-grid .seat-title h2 {
+    font-size: 20px;
+    line-height: 1.05;
+  }
+
+  .opponents-grid .rack-rail {
+    padding-top: 8px;
+  }
+
+  .opponents-grid .rack-track.opponent {
+    min-height: 66px;
+    padding: 6px;
+    gap: 3px;
+  }
+
+  .opponents-grid .rack-track.opponent .notch {
+    min-height: 50px;
+    padding: 2px 1px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile-holder {
+    min-height: 62px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small {
+    width: min(100%, 36px);
+    height: 52px;
+    padding: 4px 2px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small .tile-number {
+    font-size: 16px;
+  }
+
+  .tool-panel.step-one {
+    grid-area: draw;
+    padding: 7px;
+    overflow: hidden;
+  }
+
+  .tool-panel.step-two {
+    grid-area: clue;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    padding: 7px;
+    overflow: hidden;
+  }
+
+  .tool-panel.step-one .draw-grid {
+    height: 72px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    height: 70px;
+    min-height: 70px;
+    overflow: hidden;
+    border-width: 2px;
+    box-shadow:
+      0 3px 0 color-mix(in srgb, var(--tile-bg) 46%, #111827),
+      inset 0 1px 0 rgba(255, 255, 255, 0.68),
+      inset 0 -13px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .tool-panel.step-one .deck-btn span:first-child {
+    font-size: 15px;
+  }
+
+  .tool-panel.step-one .deck-btn span:last-child {
+    font-size: 13px;
+  }
+
+  .tool-panel.step-two .center-tiles {
+    height: 70px;
+    min-height: 70px;
+    justify-content: center;
+    gap: 8px;
+    padding: 5px 8px;
+    overflow: hidden;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: 48px;
+    height: 62px;
+  }
+
+  .tool-panel.step-two .clue-action-buttons {
+    width: min(100%, 430px);
+    margin-inline: auto;
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 36px;
+  }
+
+  .own-rack-panel {
+    grid-area: rack;
+    padding: 7px;
+    overflow: hidden;
+  }
+
+  .own-rack-panel .tool-head {
+    margin-bottom: 4px;
+  }
+
+  .own-rack-panel .rack-rail {
+    padding: 0;
+  }
+
+  .own-rack-panel .rack-scale {
+    min-height: 22px;
+    padding: 3px 8px;
+    font-size: 12px;
+  }
+
+  .rack-track.mine {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(11, minmax(0, 1fr));
+    gap: 5px;
+    min-height: 96px;
+    padding: 8px 10px;
+  }
+
+  .rack-track.mine .notch {
+    width: 100%;
+    min-height: 72px;
+  }
+
+  .rack-track.mine .tile-holder {
+    min-height: 84px;
+    grid-template-rows: minmax(24px, auto) auto;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 42px);
+    height: 62px;
+  }
+
+  .side-stack {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .side-stack > .tool-panel {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .board-grid {
+    gap: 4px;
+    padding: 7px;
+  }
+
+  .board-row {
+    gap: 3px;
+    padding: 3px;
+  }
+
+  .board-cell {
+    min-height: 40px;
+    padding: 3px 1px;
+  }
+
+  .board-cell strong {
+    font-size: 16px;
+  }
+
+  .log-panel {
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .log-list {
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sound-toggle {
+    left: 10px;
+    top: calc(env(safe-area-inset-top, 0px) + 78px);
+    bottom: auto;
+  }
+
+  .floating-chat {
+    right: 10px;
+    top: calc(env(safe-area-inset-top, 0px) + 78px);
+    bottom: auto;
+  }
+
+  .floating-chat.is-open {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  }
+}
+
+@media (min-width: 700px) and (max-width: 1180px) and (orientation: portrait) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .topbar-actions {
+    justify-content: flex-start;
+  }
+
+  .turn-spotlight {
+    grid-template-columns: minmax(0, 1fr) 132px;
+  }
+
+  .turn-speed {
+    grid-column: 1 / -1;
+  }
+
+  .main-grid {
+    grid-template-columns: minmax(0, 60fr) minmax(305px, 40fr);
+  }
+
+  .table-zone {
+    grid-template-rows: minmax(130px, 0.92fr) 122px minmax(118px, 0.82fr);
+  }
+
+  .opponents-grid .seat-title h2 {
+    font-size: 18px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small {
+    width: min(100%, 32px);
+    height: 48px;
+  }
+
+  .board-cell {
+    min-height: 36px;
+  }
+
+  .board-cell strong {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 560px) {
+  .game-screen {
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .topbar {
+    padding: 6px 7px;
+  }
+
+  .turn-spotlight {
+    padding: 7px;
+  }
+
+  .table-zone {
+    grid-template-columns: minmax(96px, 0.64fr) minmax(0, 1.36fr);
+    gap: 5px;
+  }
+
+  .opponents-grid {
+    gap: 5px;
+    padding-bottom: 2px;
+  }
+
+  .opponents-grid .seat-card {
+    flex-basis: min(92vw, 346px);
+    min-height: 128px;
+    padding: 6px;
+  }
+
+  .opponents-grid .seat-title h2 {
+    font-size: 18px;
+  }
+
+  .opponents-grid .rack-rail {
+    padding-top: 12px;
+  }
+
+  .opponents-grid .rack-track.opponent {
+    min-height: 58px;
+    padding: 5px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small {
+    max-width: 32px;
+    height: 46px;
+  }
+
+  .tool-panel.step-one,
+  .tool-panel.step-two,
+  .own-rack-panel {
+    padding: 5px;
+  }
+
+  .tool-panel.step-one .draw-grid {
+    gap: 2px;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    height: 52px;
+    min-height: 52px;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow:
+      0 2px 0 color-mix(in srgb, var(--tile-bg) 48%, #111827),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      inset 0 -10px 14px rgba(0, 0, 0, 0.22);
+  }
+
+  .tool-panel.step-one .deck-btn span:first-child {
+    font-size: 9px;
+  }
+
+  .tool-panel.step-one .deck-btn span:last-child {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+
+  .tool-panel.step-two {
+    grid-template-rows: auto 65px 31px;
+  }
+
+  .tool-panel.step-two .center-tiles {
+    height: 65px;
+    min-height: 65px;
+    gap: 4px;
+    padding: 5px;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: clamp(30px, 9.3vw, 37px);
+    height: clamp(47px, 13.5vw, 54px);
+    box-shadow:
+      0 3px 0 var(--tile-shadow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      inset 0 -9px 15px rgba(0, 0, 0, 0.2);
+  }
+
+  .tool-panel.step-two .center-tiles .tile-number {
+    font-size: clamp(15px, 4.7vw, 20px);
+  }
+
+  .tool-panel.step-two .clue-action-grid {
+    margin-top: 3px !important;
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 30px;
+    padding: 4px;
+  }
+
+  .own-rack-panel .tool-head {
+    margin-bottom: 2px;
+  }
+
+  .own-rack-panel .tool-head h2 {
+    font-size: 22px;
+  }
+
+  .own-rack-panel .rack-scale {
+    min-height: 20px;
+    padding: 2px 7px;
+    font-size: 10px;
+  }
+
+  .own-rack-panel .rack-rail {
+    padding: 0;
+  }
+
+  .rack-track.mine {
+    min-height: 92px;
+    padding: 6px 4px 5px;
+    gap: 2px;
+  }
+
+  .rack-track.mine .notch {
+    min-height: 49px;
+  }
+
+  .rack-track.mine .tile-holder {
+    min-height: 78px;
+    grid-template-rows: minmax(24px, auto) auto;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 30px);
+    height: 52px;
+  }
+
+  .rack-track.mine .tile-holder > .tile .tile-number {
+    font-size: 18px;
+  }
+
+  .rack-track.mine .tile-holder > .tile.hidden-tile .tile-number {
+    font-size: 23px;
+  }
+
+  .rack-track.mine .compare-stack {
+    min-height: 25px;
+    max-height: 28px;
+    margin-bottom: 1px;
+  }
+
+  .board-grid {
+    padding: 6px;
+  }
+
+  .board-cell {
+    min-height: clamp(30px, 7.7vw, 38px);
+    box-shadow:
+      0 2px 0 var(--tile-shadow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.62),
+      inset 0 -6px 10px rgba(0, 0, 0, 0.18);
+  }
+
+  .sound-toggle,
+  .voice-fab,
+  .chat-fab {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 999px;
+  }
+
+  .sound-toggle {
+    left: 8px;
+    top: calc(env(safe-area-inset-top, 0px) + 72px);
+    bottom: auto;
+  }
+
+  .sound-toggle-icon {
+    font-size: 18px;
+  }
+
+  .sound-toggle-label {
+    display: none;
+  }
+
+  .floating-chat {
+    right: 8px;
+    top: calc(env(safe-area-inset-top, 0px) + 72px);
+    bottom: auto;
+    gap: 7px;
+  }
+
+  .floating-chat.is-open {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  }
+
+  .voice-fab span,
+  .chat-fab span {
+    font-size: 18px;
+  }
+
+  .chat-panel {
+    max-height: min(70vh, 520px);
+  }
+}
+
 /* Active-step contrast and clipped clue controls fix (v4) */
 .game-screen .tool-panel.step-panel.is-active-step {
   border: 5px solid #ef4444;
@@ -5074,5 +6159,423 @@ body[data-view="game"]::after {
     overflow-y: auto;
     padding-right: 6px;
     -webkit-overflow-scrolling: touch;
+  }
+}
+/* Cascade tail lock. */
+@media (min-width: 700px) and (max-width: 1180px) {
+  body[data-view="game"] {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .game-screen {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    gap: 6px;
+    padding: 6px;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .topbar {
+    min-height: 60px;
+    padding: 7px 10px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .topbar h1 {
+    font-size: 32px;
+    line-height: 0.95;
+  }
+
+  .topbar-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 7px;
+  }
+
+  .topbar-actions .btn {
+    width: auto;
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .turn-spotlight {
+    min-height: 82px;
+    padding: 9px 12px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 140px 230px;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .main-grid {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 64fr) minmax(330px, 36fr);
+    gap: 6px;
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  .table-zone {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-rows: minmax(138px, 0.95fr) 128px minmax(126px, 0.88fr);
+    grid-template-areas:
+      "opponents opponents"
+      "draw clue"
+      "rack rack";
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .opponents-grid {
+    grid-area: opponents;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .opponents-grid .seat-card {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: 6px;
+  }
+
+  .opponents-grid .rack-track.opponent {
+    min-height: 66px;
+    padding: 6px;
+    gap: 3px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small {
+    width: min(100%, 36px);
+    height: 52px;
+  }
+
+  .tool-panel.step-one {
+    grid-area: draw;
+    padding: 7px;
+    overflow: hidden;
+  }
+
+  .tool-panel.step-two {
+    grid-area: clue;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    padding: 7px;
+    overflow: hidden;
+  }
+
+  .tool-panel.step-one .draw-grid {
+    height: 72px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    height: 70px;
+    min-height: 70px;
+    overflow: hidden;
+    box-shadow:
+      0 3px 0 color-mix(in srgb, var(--tile-bg) 46%, #111827),
+      inset 0 1px 0 rgba(255, 255, 255, 0.68),
+      inset 0 -13px 20px rgba(0, 0, 0, 0.2);
+  }
+
+  .tool-panel.step-two .center-tiles {
+    height: 70px;
+    min-height: 70px;
+    justify-content: center;
+    gap: 8px;
+    padding: 5px 8px;
+    overflow: hidden;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: 48px;
+    height: 62px;
+  }
+
+  .tool-panel.step-two .clue-action-buttons {
+    width: min(100%, 430px);
+    margin-inline: auto;
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 36px;
+  }
+
+  .own-rack-panel {
+    grid-area: rack;
+    padding: 7px;
+    overflow: hidden;
+  }
+
+  .own-rack-panel .tool-head {
+    margin-bottom: 4px;
+  }
+
+  .own-rack-panel .rack-rail {
+    padding: 0;
+  }
+
+  .rack-track.mine {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(11, minmax(0, 1fr));
+    gap: 5px;
+    min-height: 96px;
+    padding: 8px 10px;
+  }
+
+  .rack-track.mine .notch {
+    width: 100%;
+    min-height: 72px;
+  }
+
+  .rack-track.mine .tile-holder {
+    min-height: 84px;
+    grid-template-rows: minmax(24px, auto) auto;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 42px);
+    height: 62px;
+  }
+
+  .side-stack {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .log-panel {
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .log-list {
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sound-toggle {
+    left: 10px;
+    top: calc(env(safe-area-inset-top, 0px) + 78px);
+    bottom: auto;
+  }
+
+  .floating-chat {
+    right: 10px;
+    top: calc(env(safe-area-inset-top, 0px) + 78px);
+    bottom: auto;
+  }
+
+  .floating-chat.is-open {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  }
+}
+
+@media (min-width: 700px) and (max-width: 1180px) and (orientation: portrait) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .turn-spotlight {
+    grid-template-columns: minmax(0, 1fr) 132px;
+  }
+
+  .turn-speed {
+    grid-column: 1 / -1;
+  }
+
+  .main-grid {
+    grid-template-columns: minmax(0, 60fr) minmax(305px, 40fr);
+  }
+
+  .table-zone {
+    grid-template-rows: minmax(130px, 0.92fr) 122px minmax(118px, 0.82fr);
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small {
+    width: min(100%, 32px);
+    height: 48px;
+  }
+
+  .board-cell {
+    min-height: 36px;
+  }
+
+  .board-cell strong {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 560px) {
+  .game-screen {
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .table-zone {
+    grid-template-columns: minmax(96px, 0.64fr) minmax(0, 1.36fr);
+    gap: 5px;
+  }
+
+  .opponents-grid {
+    gap: 5px;
+    padding-bottom: 2px;
+  }
+
+  .opponents-grid .seat-card {
+    flex-basis: min(92vw, 346px);
+    min-height: 128px;
+    padding: 6px;
+  }
+
+  .opponents-grid .rack-track.opponent {
+    min-height: 58px;
+    padding: 5px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small {
+    max-width: 32px;
+    height: 46px;
+  }
+
+  .tool-panel.step-one,
+  .tool-panel.step-two,
+  .own-rack-panel {
+    padding: 5px;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    height: 52px;
+    min-height: 52px;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow:
+      0 2px 0 color-mix(in srgb, var(--tile-bg) 48%, #111827),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      inset 0 -10px 14px rgba(0, 0, 0, 0.22);
+  }
+
+  .tool-panel.step-two {
+    grid-template-rows: auto 65px 31px;
+  }
+
+  .tool-panel.step-two .center-tiles {
+    height: 65px;
+    min-height: 65px;
+    gap: 4px;
+    padding: 5px;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: clamp(30px, 9.3vw, 37px);
+    height: clamp(47px, 13.5vw, 54px);
+    box-shadow:
+      0 3px 0 var(--tile-shadow),
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      inset 0 -9px 15px rgba(0, 0, 0, 0.2);
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 30px;
+    padding: 4px;
+  }
+
+  .own-rack-panel .tool-head {
+    margin-bottom: 2px;
+  }
+
+  .own-rack-panel .tool-head h2 {
+    font-size: 22px;
+  }
+
+  .own-rack-panel .rack-rail {
+    padding: 0;
+  }
+
+  .rack-track.mine {
+    min-height: 92px;
+    padding: 6px 4px 5px;
+    gap: 2px;
+  }
+
+  .rack-track.mine .notch {
+    min-height: 49px;
+  }
+
+  .rack-track.mine .tile-holder {
+    min-height: 78px;
+    grid-template-rows: minmax(24px, auto) auto;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 30px);
+    height: 52px;
+  }
+
+  .rack-track.mine .compare-stack {
+    min-height: 25px;
+    max-height: 28px;
+    margin-bottom: 1px;
+  }
+
+  .board-cell {
+    min-height: clamp(30px, 7.7vw, 38px);
+  }
+
+  .sound-toggle,
+  .voice-fab,
+  .chat-fab {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 999px;
+  }
+
+  .sound-toggle {
+    left: 8px;
+    top: calc(env(safe-area-inset-top, 0px) + 72px);
+    bottom: auto;
+  }
+
+  .sound-toggle-label {
+    display: none;
+  }
+
+  .floating-chat {
+    right: 8px;
+    top: calc(env(safe-area-inset-top, 0px) + 72px);
+    bottom: auto;
+    gap: 7px;
+  }
+
+  .floating-chat.is-open {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
   }
 }
