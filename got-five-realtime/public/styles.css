@@ -8247,3 +8247,56 @@ body[data-view="game"]::after {
     justify-items: end !important;
   }
 }
+
+/* iPad scroll fix v5: only the actual game table is viewport-locked.
+   Start/lobby/loading screens must scroll so room creation buttons remain reachable. */
+@media (min-width: 700px) and (max-width: 1180px) and (hover: none),
+       (min-width: 700px) and (max-width: 1180px) and (pointer: coarse) {
+  html {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  body:not([data-view="game"]) {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: auto !important;
+    touch-action: pan-y !important;
+  }
+
+  body[data-view="start"] .app-shell,
+  body[data-view="lobby"] .app-shell,
+  body[data-view="loading"] .app-shell {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+  }
+
+  .start-screen,
+  .lobby-screen,
+  .loading-screen {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+    align-items: start !important;
+    padding-block: max(18px, env(safe-area-inset-top, 0px)) max(32px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body[data-view="game"] {
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    touch-action: manipulation !important;
+  }
+
+  body[data-view="game"] .app-shell,
+  body[data-view="game"] .game-screen {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+}
