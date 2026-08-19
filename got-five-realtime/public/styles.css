@@ -6579,3 +6579,776 @@ body[data-view="game"]::after {
     bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
   }
 }
+/* iPad rescue layout v2.
+   Touch tablets get their own compact board-game layout instead of inheriting
+   the desktop split or the phone stacking rules. */
+@media (min-width: 700px) and (max-width: 1180px) and (hover: none),
+       (min-width: 700px) and (max-width: 1180px) and (pointer: coarse) {
+  html,
+  body[data-view="game"] {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body[data-view="game"] {
+    overscroll-behavior: none;
+  }
+
+  .game-screen {
+    height: 100dvh;
+    min-height: 0;
+    padding: 5px;
+    gap: 5px;
+    display: grid;
+    grid-template-rows: clamp(44px, 7.4dvh, 62px) clamp(52px, 8.2dvh, 72px) minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .topbar {
+    min-height: 0;
+    max-height: 62px;
+    padding: 4px 7px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+    overflow: hidden;
+  }
+
+  .topbar > div:first-child {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .topbar h1 {
+    margin: 0;
+    font-size: clamp(21px, 3vw, 30px);
+    line-height: 0.95;
+    white-space: nowrap;
+  }
+
+  .topbar-meta {
+    min-width: 0;
+    flex-wrap: nowrap;
+    gap: 5px;
+    overflow: hidden;
+  }
+
+  .topbar-meta .small-pill {
+    flex: 0 0 auto;
+    max-width: 150px;
+    padding: 3px 7px;
+    font-size: 11px;
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .topbar-meta .small-pill:nth-child(2) {
+    max-width: 210px;
+  }
+
+  .topbar-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .topbar-actions .btn {
+    width: auto;
+    min-width: 0;
+    min-height: 34px;
+    padding: 6px 9px;
+    font-size: 12px;
+    line-height: 1.1;
+    border-radius: 7px;
+    white-space: nowrap;
+  }
+
+  .turn-spotlight {
+    min-height: 0;
+    height: 100%;
+    padding: 5px 8px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .turn-person {
+    min-width: 0;
+    gap: 7px;
+  }
+
+  .turn-avatar {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+  }
+
+  .turn-kicker {
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .turn-task {
+    display: block;
+    font-size: clamp(16px, 2.6vw, 24px);
+    line-height: 1.05;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .turn-person small {
+    display: none;
+  }
+
+  .turn-meter {
+    min-width: 86px;
+    padding: 4px 8px;
+    border-radius: 8px;
+  }
+
+  .turn-meter span {
+    font-size: 11px;
+  }
+
+  .turn-meter b {
+    font-size: 24px;
+    line-height: 0.95;
+  }
+
+  .turn-speed {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 5px;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .turn-speed span {
+    min-width: 0;
+    padding: 4px 7px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .main-grid {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 58fr) minmax(0, 42fr);
+    gap: 5px;
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  .table-zone {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(180px, 0.74fr) minmax(0, 1.26fr);
+    grid-template-rows: minmax(88px, 0.9fr) minmax(84px, 0.78fr) minmax(88px, 0.82fr);
+    grid-template-areas:
+      "opponents opponents"
+      "draw clue"
+      "rack rack";
+    gap: 5px;
+    overflow: hidden;
+  }
+
+  .opponents-grid {
+    grid-area: opponents;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .opponents-grid .seat-card {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: 5px;
+    overflow: hidden;
+  }
+
+  .opponents-grid .seat-head {
+    min-height: 0;
+    height: 32px;
+    margin-bottom: 3px;
+    gap: 5px;
+  }
+
+  .opponents-grid .seat-avatar {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+
+  .opponents-grid .seat-title h2 {
+    font-size: clamp(15px, 2.1vw, 20px);
+    line-height: 1;
+  }
+
+  .opponents-grid .seat-meta {
+    gap: 3px;
+  }
+
+  .opponents-grid .small-pill {
+    padding: 2px 5px;
+    font-size: 10px;
+  }
+
+  .opponents-grid .rack-rail {
+    min-height: 0;
+    padding: 10px 0 0;
+    overflow: visible;
+  }
+
+  .opponents-grid .rack-track.opponent {
+    min-height: 0;
+    height: 100%;
+    grid-template-columns: repeat(11, minmax(0, 1fr));
+    gap: 2px;
+    padding: 5px;
+    overflow: visible;
+  }
+
+  .opponents-grid .rack-track.opponent .notch {
+    min-height: 42px;
+    border-radius: 6px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile-holder {
+    min-height: 50px;
+  }
+
+  .opponents-grid .rack-track.opponent .compare-stack {
+    min-height: 13px;
+    max-height: 17px;
+    margin-bottom: 0;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small {
+    width: min(100%, 34px);
+    height: 49px;
+    padding: 3px 2px;
+    border-radius: 7px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.small .tile-number {
+    font-size: 14px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.mini {
+    width: 17px;
+    height: 22px;
+    border-radius: 5px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.mini .tile-number {
+    font-size: 9px;
+  }
+
+  .opponents-grid .rack-track.opponent .tile.mini .dots {
+    display: none;
+  }
+
+  .tool-panel.step-one,
+  .tool-panel.step-two,
+  .own-rack-panel {
+    min-height: 0;
+    padding: 5px;
+    overflow: hidden;
+  }
+
+  .tool-panel.step-one {
+    grid-area: draw;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .tool-panel.step-two {
+    grid-area: clue;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .tool-panel.step-one .tool-head,
+  .tool-panel.step-two .tool-head,
+  .own-rack-panel .tool-head {
+    min-height: 0;
+    margin-bottom: 4px;
+    gap: 4px;
+  }
+
+  .tool-panel.step-one .tool-head h2,
+  .tool-panel.step-two .tool-head h2,
+  .own-rack-panel .tool-head h2 {
+    font-size: clamp(17px, 2.4vw, 23px);
+    line-height: 1;
+  }
+
+  .step-number {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    font-size: 14px;
+  }
+
+  .step-state,
+  .status-pill {
+    padding: 3px 7px;
+    font-size: 10px;
+    line-height: 1.1;
+    border-radius: 7px;
+  }
+
+  .tool-panel.step-one .draw-grid {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    height: 100%;
+    min-height: 0;
+    padding: 5px 3px;
+    border-radius: 8px;
+    border-width: 2px;
+    box-shadow:
+      0 3px 0 color-mix(in srgb, var(--tile-bg) 50%, #111827),
+      inset 0 1px 0 rgba(255, 255, 255, 0.64),
+      inset 0 -11px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  .tool-panel.step-one .deck-btn span:first-child {
+    font-size: clamp(11px, 1.8vw, 16px);
+  }
+
+  .tool-panel.step-one .deck-btn span:last-child {
+    padding: 2px 6px;
+    font-size: clamp(10px, 1.5vw, 13px);
+  }
+
+  .tool-panel.step-two .center-tiles {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    padding: 4px 7px;
+    gap: clamp(5px, 1vw, 10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    flex: 0 0 auto;
+    width: clamp(38px, 4.8vw, 55px);
+    height: clamp(52px, 6vw, 70px);
+    padding: 4px 3px;
+  }
+
+  .tool-panel.step-two .center-tiles .tile-number {
+    font-size: clamp(18px, 2.8vw, 26px);
+  }
+
+  .tool-panel.step-two .clue-action-grid {
+    position: static;
+    display: block;
+    min-height: 0;
+    margin-top: 4px;
+  }
+
+  .tool-panel.step-two .clue-action-buttons {
+    position: static;
+    transform: none;
+    width: min(100%, 420px);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 31px;
+    padding: 5px 8px;
+    font-size: 13px;
+    line-height: 1.1;
+    border-radius: 7px;
+  }
+
+  .own-rack-panel {
+    grid-area: rack;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .own-rack-panel .rack-rail,
+  .rack-rail-mine {
+    height: 100%;
+    min-height: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .rack-rail-mine {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "low track high";
+    gap: 5px;
+    align-items: center;
+  }
+
+  .rack-rail-mine .rack-scale {
+    position: static;
+    z-index: 2;
+    width: auto;
+    min-width: 48px;
+    min-height: 28px;
+    padding: 5px 7px;
+    font-size: 12px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .rack-rail-mine .rack-scale-low {
+    grid-area: low;
+  }
+
+  .rack-rail-mine .rack-scale-high {
+    grid-area: high;
+  }
+
+  .rack-track.mine {
+    grid-area: track;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    grid-template-columns: repeat(11, minmax(0, 1fr));
+    gap: 4px;
+    padding: 6px 8px;
+    overflow: visible;
+  }
+
+  .rack-track.mine .notch {
+    width: 100%;
+    min-width: 0;
+    min-height: 54px;
+    border-radius: 7px;
+  }
+
+  .rack-track.mine .tile-holder {
+    min-height: 64px;
+    display: grid;
+    grid-template-rows: minmax(16px, auto) auto;
+    align-items: end;
+    justify-items: center;
+  }
+
+  .rack-track.mine .compare-stack {
+    min-height: 16px;
+    max-height: 20px;
+    margin-bottom: 0;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 34px);
+    height: 54px;
+    padding: 4px 2px;
+    border-radius: 7px;
+  }
+
+  .rack-track.mine .tile-holder > .tile .tile-number {
+    font-size: 22px;
+  }
+
+  .rack-track.mine .tile.mini {
+    width: 18px;
+    height: 24px;
+    border-radius: 5px;
+  }
+
+  .side-stack {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 5px;
+    overflow: hidden;
+  }
+
+  .side-stack > .tool-panel,
+  .side-stack > .log-panel {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: 6px;
+    overflow: hidden;
+  }
+
+  .side-stack > .tool-panel .tool-head,
+  .side-stack > .log-panel .tool-head {
+    min-height: 0;
+    margin-bottom: 5px;
+    gap: 5px;
+  }
+
+  .side-stack > .tool-panel .tool-head h2,
+  .side-stack > .log-panel .tool-head h2 {
+    font-size: clamp(18px, 2.5vw, 25px);
+    line-height: 1.05;
+  }
+
+  .board-grid {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+    padding: 6px;
+    overflow: hidden;
+  }
+
+  .board-row {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 3px;
+    min-height: 0;
+  }
+
+  .board-cell {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    aspect-ratio: auto;
+    padding: 2px 1px;
+    border-radius: 6px;
+  }
+
+  .board-cell strong {
+    font-size: clamp(13px, 2vw, 19px);
+    line-height: 1;
+  }
+
+  .board-cell .dots {
+    gap: 2px;
+    margin-top: 2px;
+  }
+
+  .board-cell .dot {
+    width: clamp(3px, 0.7vw, 5px);
+    height: clamp(3px, 0.7vw, 5px);
+  }
+
+  .log-panel {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .log-list {
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 2px;
+  }
+
+  .log-item {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 7px;
+    padding: 7px;
+    contain-intrinsic-size: 78px;
+  }
+
+  .log-avatar,
+  .log-avatar-cell .avatar,
+  .log-avatar-cell {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+
+  .log-item-head {
+    gap: 5px;
+  }
+
+  .log-title strong {
+    font-size: 12px;
+  }
+
+  .log-title span,
+  .log-body {
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .log-body .tile {
+    width: 34px;
+    height: 44px;
+  }
+
+  .action-badge {
+    padding: 3px 6px;
+    font-size: 9px;
+  }
+
+  .sound-toggle,
+  .voice-fab,
+  .chat-fab {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    min-height: 42px;
+    padding: 0;
+    border-radius: 999px;
+  }
+
+  .sound-toggle {
+    left: 8px;
+    right: auto;
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  }
+
+  .sound-toggle-label,
+  .voice-fab small,
+  .chat-fab small {
+    display: none;
+  }
+
+  .floating-chat {
+    right: 8px;
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+    gap: 6px;
+  }
+
+  .floating-chat.is-open {
+    width: min(360px, calc(100vw - 20px));
+    right: 8px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+  }
+}
+
+@media (min-width: 700px) and (max-width: 1180px) and (hover: none) and (orientation: portrait),
+       (min-width: 700px) and (max-width: 1180px) and (pointer: coarse) and (orientation: portrait) {
+  .game-screen {
+    grid-template-rows: clamp(44px, 5.8dvh, 58px) clamp(56px, 7dvh, 70px) minmax(0, 1fr);
+  }
+
+  .turn-speed {
+    display: none;
+  }
+
+  .turn-spotlight {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .main-grid {
+    grid-template-rows: minmax(0, 54fr) minmax(0, 46fr);
+  }
+
+  .table-zone {
+    grid-template-columns: minmax(150px, 0.68fr) minmax(0, 1.32fr);
+    grid-template-rows: minmax(94px, 0.95fr) minmax(96px, 0.78fr) minmax(96px, 0.82fr);
+  }
+
+  .side-stack {
+    grid-template-columns: minmax(0, 1.28fr) minmax(0, 0.72fr);
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: clamp(42px, 6vw, 52px);
+    height: clamp(56px, 7.4vw, 66px);
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 38px);
+    height: 58px;
+  }
+
+  .board-grid {
+    gap: 3px;
+    padding: 6px;
+  }
+
+  .board-row {
+    gap: 3px;
+  }
+
+  .board-cell strong {
+    font-size: clamp(13px, 2.2vw, 17px);
+  }
+}
+
+@media (min-width: 700px) and (max-width: 1180px) and (hover: none) and (orientation: landscape),
+       (min-width: 700px) and (max-width: 1180px) and (pointer: coarse) and (orientation: landscape) {
+  .game-screen {
+    grid-template-rows: clamp(42px, 8dvh, 56px) clamp(50px, 8.6dvh, 66px) minmax(0, 1fr);
+  }
+
+  .topbar-meta .small-pill:nth-child(2),
+  .topbar-meta .starter-pill {
+    display: none;
+  }
+
+  .main-grid {
+    grid-template-rows: minmax(0, 57fr) minmax(0, 43fr);
+  }
+
+  .table-zone {
+    grid-template-rows: minmax(84px, 0.82fr) minmax(78px, 0.72fr) minmax(76px, 0.72fr);
+  }
+
+  .tool-panel.step-one .deck-btn span:first-child {
+    font-size: clamp(10px, 1.4vw, 14px);
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: clamp(38px, 4.1vw, 50px);
+    height: clamp(50px, 5.3vw, 64px);
+  }
+
+  .own-rack-panel .tool-head h2 {
+    font-size: clamp(16px, 2vw, 21px);
+  }
+
+  .rack-track.mine .notch {
+    min-height: 46px;
+  }
+
+  .rack-track.mine .tile-holder {
+    min-height: 56px;
+  }
+
+  .rack-track.mine .tile-holder > .tile {
+    width: min(100%, 31px);
+    height: 50px;
+  }
+
+  .board-cell strong {
+    font-size: clamp(12px, 1.45vw, 17px);
+  }
+}
