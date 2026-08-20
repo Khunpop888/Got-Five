@@ -8543,3 +8543,277 @@ body[data-view="game"]::after {
     min-height: 3px !important;
   }
 }
+
+/* v9: the small clue tiles on our rack must never crop digits/dots on iPad. */
+.rack-track.mine .notch,
+.rack-track.mine .tile-holder,
+.rack-track.mine .compare-stack {
+  overflow: visible !important;
+}
+
+.rack-track.mine .notch > .tile.mini,
+.rack-track.mine .compare-stack > .tile.mini {
+  box-sizing: border-box !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  max-width: 24px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 2px 1px 3px !important;
+  border-width: 1px !important;
+  border-radius: 6px !important;
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  justify-items: center !important;
+  justify-content: center !important;
+  align-content: center !important;
+  gap: 1px !important;
+  overflow: hidden !important;
+  transform: none !important;
+}
+
+.rack-track.mine .notch > .tile.mini .tile-number,
+.rack-track.mine .compare-stack > .tile.mini .tile-number {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  letter-spacing: 0 !important;
+  transform: none !important;
+}
+
+.rack-track.mine .notch > .tile.mini .dots,
+.rack-track.mine .compare-stack > .tile.mini .dots {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  min-height: 4px !important;
+  height: 4px !important;
+  gap: 1px !important;
+  margin: 0 !important;
+  overflow: visible !important;
+}
+
+.rack-track.mine .notch > .tile.mini .dot,
+.rack-track.mine .compare-stack > .tile.mini .dot {
+  flex: 0 0 3px !important;
+  width: 3px !important;
+  min-width: 3px !important;
+  height: 3px !important;
+  min-height: 3px !important;
+}
+
+/* v10: phone cleanup only. Keep controls together, unclipped mini tiles, readable draw cards and two-digit notes. */
+@media (max-width: 560px) {
+  body[data-view="game"] .sound-toggle,
+  body[data-view="game"] .voice-fab,
+  body[data-view="game"] .chat-fab {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    z-index: 1200 !important;
+  }
+
+  body[data-view="game"] .sound-toggle {
+    position: fixed !important;
+    left: auto !important;
+    right: 8px !important;
+    top: calc(env(safe-area-inset-top, 0px) + 132px) !important;
+    bottom: auto !important;
+  }
+
+  body[data-view="game"] .sound-toggle-label,
+  body[data-view="game"] .voice-fab small,
+  body[data-view="game"] .chat-fab small {
+    display: none !important;
+  }
+
+  body[data-view="game"] .floating-chat {
+    position: fixed !important;
+    left: auto !important;
+    right: 8px !important;
+    top: calc(env(safe-area-inset-top, 0px) + 182px) !important;
+    bottom: auto !important;
+    display: grid !important;
+    grid-template-columns: 42px !important;
+    gap: 8px !important;
+    align-items: end !important;
+    justify-items: end !important;
+    pointer-events: none !important;
+    z-index: 1190 !important;
+  }
+
+  body[data-view="game"] .floating-chat > button,
+  body[data-view="game"] .floating-chat .chat-panel {
+    pointer-events: auto !important;
+  }
+
+  body[data-view="game"] .floating-chat .voice-fab,
+  body[data-view="game"] .floating-chat .chat-fab {
+    position: static !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+  }
+
+  body[data-view="game"] .floating-chat.is-open {
+    top: auto !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 10px) !important;
+    grid-template-columns: minmax(0, 1fr) 42px !important;
+    width: min(94vw, 380px) !important;
+  }
+
+  body[data-view="game"] .floating-chat.is-open .chat-panel {
+    width: min(82vw, 330px) !important;
+    max-height: min(66vh, 470px) !important;
+    grid-row: 1 / span 2 !important;
+    grid-column: 1 !important;
+  }
+
+  .table-zone {
+    grid-template-columns: minmax(148px, 0.88fr) minmax(0, 1.12fr) !important;
+  }
+
+  .tool-panel.step-one {
+    overflow: visible !important;
+  }
+
+  .tool-panel.step-one .draw-grid {
+    gap: 3px !important;
+    overflow: visible !important;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    min-width: 0 !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    padding: 4px 1px !important;
+    border-width: 2px !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      inset 0 -8px 12px rgba(0, 0, 0, 0.22) !important;
+  }
+
+  .tool-panel.step-one .deck-btn span:first-child {
+    display: block !important;
+    width: 100% !important;
+    font-size: 8.5px !important;
+    line-height: 1.05 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  .tool-panel.step-one .deck-btn span:last-child {
+    max-width: calc(100% - 2px) !important;
+    padding: 1px 2px !important;
+    font-size: 9px !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+  }
+
+  .tool-panel.step-two .center-tiles {
+    padding-inline: 4px !important;
+    gap: 4px !important;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    width: clamp(31px, 8.9vw, 36px) !important;
+    height: clamp(47px, 13vw, 53px) !important;
+  }
+
+  .rack-track.opponent .compare-stack,
+  .rack-track.mine .compare-stack {
+    overflow: visible !important;
+    min-height: 32px !important;
+    max-height: none !important;
+  }
+
+  .rack-track.opponent .compare-stack > .tile.mini,
+  .rack-track.mine .compare-stack > .tile.mini,
+  .rack-track.mine .notch > .tile.mini {
+    box-sizing: border-box !important;
+    width: 24px !important;
+    min-width: 24px !important;
+    max-width: 24px !important;
+    height: 33px !important;
+    min-height: 33px !important;
+    max-height: 33px !important;
+    padding: 2px 1px 3px !important;
+    display: grid !important;
+    grid-template-rows: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    justify-items: center !important;
+    gap: 1px !important;
+    overflow: hidden !important;
+  }
+
+  .rack-track.opponent .compare-stack > .tile.mini .tile-number,
+  .rack-track.mine .compare-stack > .tile.mini .tile-number,
+  .rack-track.mine .notch > .tile.mini .tile-number {
+    width: 100% !important;
+    font-size: 10px !important;
+    line-height: 1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+  }
+
+  .rack-track.opponent .compare-stack > .tile.mini .dots,
+  .rack-track.mine .compare-stack > .tile.mini .dots,
+  .rack-track.mine .notch > .tile.mini .dots {
+    display: flex !important;
+    width: 100% !important;
+    height: 5px !important;
+    min-height: 5px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 1px !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .rack-track.opponent .compare-stack > .tile.mini .dot,
+  .rack-track.mine .compare-stack > .tile.mini .dot,
+  .rack-track.mine .notch > .tile.mini .dot {
+    flex: 0 0 3.25px !important;
+    width: 3.25px !important;
+    min-width: 3.25px !important;
+    height: 3.25px !important;
+    min-height: 3.25px !important;
+  }
+
+  .rack-track.mine .tile-holder > .tile.hidden-tile .secret-note {
+    left: 1px !important;
+    right: 1px !important;
+    bottom: 4px !important;
+    width: auto !important;
+    max-width: none !important;
+    height: 18px !important;
+    min-height: 18px !important;
+    padding: 0 1px !important;
+    box-sizing: border-box !important;
+    font-size: 10px !important;
+    line-height: 18px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+}
