@@ -199,7 +199,6 @@ function handleUiClickSound(event) {
   unlockAudio();
   if (control.id === "sound-toggle") return;
   if (control.matches("[data-mark]")) {
-    playSound(control.classList.contains("is-marked") ? "markOff" : "markOn");
     return;
   }
   if (control.id === "submit-guess") {
@@ -328,11 +327,13 @@ function playSound(name, options = {}) {
     tone(410, 0, 0.08, { type: "triangle", volume: 0.07 });
     tone(275, 0.055, 0.12, { type: "sine", volume: 0.07 });
   } else if (name === "markOn") {
-    noise(0, 0.07, { frequency: 260, filterType: "lowpass", volume: 0.055 });
-    tone(150, 0, 0.09, { type: "square", endFrequency: 110, volume: 0.035 });
+    tone(560, 0, 0.055, { type: "sine", volume: 0.12 });
+    tone(840, 0.035, 0.085, { type: "triangle", volume: 0.105 });
+    noise(0.012, 0.045, { frequency: 1150, filterType: "lowpass", volume: 0.018 });
   } else if (name === "markOff") {
-    tone(240, 0, 0.07, { type: "triangle", volume: 0.055 });
-    tone(380, 0.05, 0.09, { type: "sine", volume: 0.06 });
+    tone(620, 0, 0.045, { type: "triangle", volume: 0.105 });
+    tone(420, 0.038, 0.08, { type: "sine", volume: 0.095 });
+    noise(0.01, 0.035, { frequency: 900, filterType: "lowpass", volume: 0.014 });
   } else if (name === "draw") {
     noise(0, 0.22, { frequency: 1250, volume: 0.05 });
     tone(220, 0, 0.2, { type: "sawtooth", endFrequency: 660, volume: 0.045 });
@@ -2322,8 +2323,10 @@ function bindGame() {
   bindAll("[data-mark]", "click", (event) => {
     const num = Number(event.currentTarget.dataset.mark);
     const marked = !event.currentTarget.classList.contains("is-marked");
+    unlockAudio();
     if (send("mark", { num, marked })) {
       setBoardMark(num, marked);
+      playSound(marked ? "markOn" : "markOff");
     }
   });
   bindAll("[data-note-slot]", "input", (event) => {

@@ -8817,3 +8817,142 @@ body[data-view="game"]::after {
     text-overflow: clip !important;
   }
 }
+
+/* v11 final override: mobile sound rail and six-center-tile fit. */
+@media (max-width: 560px) {
+  body[data-view="game"] .sound-toggle,
+  body[data-view="game"] .voice-fab,
+  body[data-view="game"] .chat-fab {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    border-width: 2px !important;
+    box-shadow:
+      0 7px 16px rgba(15, 23, 42, 0.24),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  }
+
+  body[data-view="game"] .sound-toggle {
+    left: auto !important;
+    right: 6px !important;
+    top: calc(env(safe-area-inset-top, 0px) + 128px) !important;
+    bottom: auto !important;
+  }
+
+  body[data-view="game"] .floating-chat {
+    right: 6px !important;
+    top: calc(env(safe-area-inset-top, 0px) + 172px) !important;
+    grid-template-columns: 38px !important;
+    gap: 6px !important;
+  }
+
+  body[data-view="game"] .sound-toggle-icon,
+  body[data-view="game"] .voice-fab span,
+  body[data-view="game"] .chat-fab span {
+    font-size: 18px !important;
+    line-height: 1 !important;
+  }
+
+  .table-zone {
+    grid-template-columns: minmax(142px, 0.86fr) minmax(0, 1.14fr) !important;
+    gap: 4px !important;
+  }
+
+  .tool-panel.step-one .draw-grid {
+    gap: 2px !important;
+  }
+
+  .tool-panel.step-one .deck-btn {
+    height: 60px !important;
+    min-height: 60px !important;
+    padding: 4px 1px 3px !important;
+    overflow: visible !important;
+    box-shadow:
+      0 2px 0 color-mix(in srgb, var(--tile-bg) 48%, #111827),
+      0 5px 8px rgba(15, 23, 42, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.66),
+      inset 0 -7px 10px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  .tool-panel.step-one .deck-btn span:first-child {
+    font-size: 8px !important;
+    line-height: 1.08 !important;
+    transform: scaleX(0.92) !important;
+    transform-origin: center !important;
+  }
+
+  .tool-panel.step-one .deck-btn span:last-child {
+    font-size: 9px !important;
+    line-height: 1.05 !important;
+    padding: 1px 2px !important;
+  }
+
+  .tool-panel.step-two {
+    overflow: visible !important;
+  }
+
+  .tool-panel.step-two .center-tiles {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: 58px !important;
+    min-height: 58px !important;
+    max-height: 58px !important;
+    padding: 3px 2px !important;
+    gap: 2px !important;
+    justify-content: center !important;
+    align-items: center !important;
+    overflow: hidden !important;
+  }
+
+  .tool-panel.step-two .center-tiles .tile {
+    box-sizing: border-box !important;
+    width: clamp(26px, 7vw, 30px) !important;
+    min-width: clamp(26px, 7vw, 30px) !important;
+    max-width: 30px !important;
+    height: clamp(40px, 10.9vw, 46px) !important;
+    min-height: clamp(40px, 10.9vw, 46px) !important;
+    max-height: 46px !important;
+    padding: 3px 1px 4px !important;
+    border-width: 1px !important;
+    border-radius: 7px !important;
+    box-shadow:
+      0 2px 0 color-mix(in srgb, var(--tile-bg) 48%, #111827),
+      0 4px 8px rgba(15, 23, 42, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.56),
+      inset 0 -5px 8px rgba(0, 0, 0, 0.22) !important;
+  }
+
+  .tool-panel.step-two .center-tiles .tile-number {
+    display: block !important;
+    width: 100% !important;
+    font-size: clamp(14px, 3.8vw, 16px) !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-align: center !important;
+  }
+
+  .tool-panel.step-two .center-tiles .dots {
+    min-height: 5px !important;
+    height: 5px !important;
+    gap: 1px !important;
+    overflow: visible !important;
+  }
+
+  .tool-panel.step-two .center-tiles .dot {
+    width: 4px !important;
+    min-width: 4px !important;
+    height: 4px !important;
+    min-height: 4px !important;
+  }
+
+  .tool-panel.step-two .clue-action-buttons {
+    gap: 5px !important;
+  }
+
+  .tool-panel.step-two .clue-action-buttons .btn {
+    min-height: 31px !important;
+    padding: 4px 5px !important;
+  }
+}
